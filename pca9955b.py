@@ -23,10 +23,7 @@ Implementation Notes
 * Adafruit CircuitPython firmware for the supported boards:
   https://circuitpython.org/downloads
 
-.. todo:: Uncomment or remove the Bus Device and/or the Register library dependencies
-  based on the library's use of either.
 
- * Adafruit's Bus Device library: https://github.com/adafruit/Adafruit_CircuitPython_BusDevice
 """
 
 # imports
@@ -35,92 +32,244 @@ __version__ = "0.0.0-auto.0"
 __repo__ = "https://github.com/NoelAnderson/CircuitPython_PCA9955B.git"
 
 from micropython import const
+
+try:
+    from typing import Optional, NoReturn
+    from busio import I2C       
+except ImportError:
+    pass
+
 import adafruit_bus_device.i2c_device as i2c_device
+
+_PCA9955B_DEFAULT_I2C_ADDR = const(0x3F) # AD10 AD1 & AD2 all FLT (Floating Inputs)
 
 # Register map & bit positions
 
-_REGISTER_MODE1 = const(0x00)            # R/W
+_REGISTER_MODE1 = const(0x00)   # R/W
+#---------------------------------------------------------------#
+#   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
+#-------+-------+-------+-------+-------+-------+-------+-------|
+#  AIF  |  AI1  |  AI0  | SLEEP |  SUB1 |  SUB2 |  SUB3 |ALLCALL|
+#---------------------------------------------------------------#
+_BIT_POS_ALLCALL = const(0)  #R
+_BIT_POS_SUB3 = const(1)  # R/W
+_BIT_POS_SUB2 = const(2)  # R/W
+_BIT_POS_SUB1 = const(3)  # R/W
+_BIT_POS_SLEEP = const(4)  # R/W
+_BIT_POS_AI0 = const(5)  # R/W
+_BIT_POS_AI1 = const(6)  # R/W
+_BIT_POS_AIF = const(7)  # R/W
 
- #-------+-------+-------+-------+-------+-------+-------+-------+
- #   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
- #-------+-------+-------+-------+-------+-------+-------+-------+
- #  TEMP | ERROR |DMBLNK | CLRERR|  OCH  |EXP_EN |       |       |
- #-------+-------+-------+-------+-------+-------+-------+-------+
-_REGISTER_MODE2 = const(0x01)    # R/W
-_BIT_OVERTEMP = const(7)         #  ok/overtemp (1 bit)
-_BIT_ERROR = const(6)            #  no error/error (1 bit)
-_BIT_DMBLNK = const(5)           #  group dimming/blinking (1 bit)
-_BIT_CLRERR = const(4)           #  (1 bit)
-_BIT_OCH = const(3)              #  (1 bit)
-_BIT_EXP_EN = const(2)           #  grad control linear/exponential (1 bit)
+_REGISTER_MODE2 = const(0x01)   # R/W
+#---------------------------------------------------------------#
+#   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
+#-------+-------+-------+-------+-------+-------+-------+-------|
+# OVERTP| ERROR | DMBLNK| CLRERR|  OCH  |EXP_EN |   -   |   -   |
+#---------------------------------------------------------------#
+_BIT_POS_EXP_EN = const(2)  # R/W
+_BIT_POS_OCH = const(3)  # R/W
+_BIT_POS_CLRERR = const(4)  # W
+_BIT_POS_DMBLNK = const(5)  # R/W
+_BIT_POS_ERROR = const(6)  # R
+_BIT_POS_OVERTEMP = const(7)  # R
 
-_REGISTER_LEDOUT0 = const(0x02)  # R/W
+_REGISTER_LEDOUT0 = const(0x02)   # R/W
+_REGISTER_LEDOUT1 = const(0x03)   # R/W
+_REGISTER_LEDOUT2 = const(0x04)   # R/W
+_REGISTER_LEDOUT3 = const(0x05)   # R/W
+#---------------------------------------------------------------#
+#   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
+#-------+-------+-------+-------+-------+-------+-------+-------|
+#      LED3     |      LED2     |      LED1     |      LEDO     | _REGISTER_LEDOUT0 
+#-------+-------+-------+-------+-------+-------+-------+-------|
+#      LED7     |      LED6     |      LED5     |      LED4     | _REGISTER_LEDOUT1
+#-------+-------+-------+-------+-------+-------+-------+-------|
+#      LED11    |      LED10    |      LED9     |      LED8     | _REGISTER_LEDOUT2
+#-------+-------+-------+-------+-------+-------+-------+-------|
+#      LED15    |      LED14    |      LED13    |      LED12    | _REGISTER_LEDOUT3
+#---------------------------------------------------------------#
+_BIT_POS_LED0 = _BIT_POS_LED4 = _BIT_POS_LED8 = _BIT_POS_LED12 = const(0)  # R/W
+_BIT_POS_LED1 = _BIT_POS_LED5 = _BIT_POS_LED9 = _BIT_POS_LED13 = const(2)  # R/W
+_BIT_POS_LED2 = _BIT_POS_LED6 = _BIT_POS_LED10 = _BIT_POS_LED14 = const(4)  # R/W
+_BIT_POS_LED3 = _BIT_POS_LED7 = _BIT_POS_LED11 = _BIT_POS_LED15 = const(6)  # R/W
+
 _REGISTER_GRPPWM = const(0x06)   # R/W
 _REGISTER_GRPFREQ = const(0x07)  # R/W
-_REGISTER_PWM0 = const(0x08)     # R/W
-_REGISTER_IREF0 = const(0x18)    # R/W
 
-#---------------------------------------------------------------#
-#   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
-#-------+-------+-------+-------+-------+-------+-------+-------|
-#  R UP | R DOWN|                   RATE                        |
-#---------------------------------------------------------------#
+_REGISTER_PWM0 = const(0x08)   # R/W
+_REGISTER_PWM1 = const(0x09)   # R/W
+_REGISTER_PWM2 = const(0x0A)   # R/W
+_REGISTER_PWM3 = const(0x0B)   # R/W
+_REGISTER_PWM4 = const(0x0C)   # R/W
+_REGISTER_PWM5 = const(0x0D)   # R/W
+_REGISTER_PWM6 = const(0x0E)   # R/W
+_REGISTER_PWM7 = const(0x0F)   # R/W
+_REGISTER_PWM8 = const(0x10)   # R/W
+_REGISTER_PWM9 = const(0x11)   # R/W
+_REGISTER_PWM10 = const(0x12)  # R/W
+_REGISTER_PWM11 = const(0x13)  # R/W
+_REGISTER_PWM12 = const(0x14)  # R/W
+_REGISTER_PWM13 = const(0x15)  # R/W
+_REGISTER_PWM14 = const(0x16)  # R/W
+_REGISTER_PWM15 = const(0x17)  # R/W
+
+_REGISTER_IREF0 = const(0x18)   # R/W
+_REGISTER_IREF1 = const(0x19)   # R/W
+_REGISTER_IREF2 = const(0x1A)   # R/W
+_REGISTER_IREF3 = const(0x1B)   # R/W
+_REGISTER_IREF4 = const(0x1C)   # R/W
+_REGISTER_IREF5 = const(0x1D)   # R/W
+_REGISTER_IREF6 = const(0x1E)   # R/W
+_REGISTER_IREF7 = const(0x1F)   # R/W
+_REGISTER_IREF8 = const(0x20)   # R/W
+_REGISTER_IREF9 = const(0x21)   # R/W
+_REGISTER_IREF10 = const(0x22)  # R/W
+_REGISTER_IREF11 = const(0x23)  # R/W
+_REGISTER_IREF12 = const(0x24)  # R/W
+_REGISTER_IREF13 = const(0x25)  # R/W
+_REGISTER_IREF14 = const(0x26)  # R/W
+_REGISTER_IREF15 = const(0x27)  # R/W
+
 _REGISTER_RAMP_RATE_GRP0 = const(0x28)  # R/W
-_BIT_RAMP_UP = const(7)                 #  Enable/disable (1 bit)
-_BIT_RAMP_DOWN = const(6)               #  Enable/disable (1 bit)
-_BIT_RAMP_RATE = const(0)               #  Enable/disable (6 bits)
-
+_REGISTER_RAMP_RATE_GRP1 = const(0x2C)  # R/W
+_REGISTER_RAMP_RATE_GRP2 = const(0x30)  # R/W
+_REGISTER_RAMP_RATE_GRP3 = const(0x34)  # R/W
 #---------------------------------------------------------------#
 #   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
 #-------+-------+-------+-------+-------+-------+-------+-------|
-#       | CTIME |               FACTOR PER STEP                 |
+# RAMPUP| RAMPDW|              RAMP RATE                        |
 #---------------------------------------------------------------#
-_REGISTER_STEP_TIME_GRP0 = const(0x2A)  # R/W
-_BIT_CYCLE_TIME = const(6)              #  Cycle time 1 bit
-_BIT_FACTOR_PER_STEP = const(0)         #  Factor per step (6 bits)
+_BIT_POS_RAMP_RATE = const(0)  # R/W
+_BIT_POS_RAMP_DOWN_ENABLE = const(6)  # R/W
+_BIT_POS_RAMP_UP_ENABLE = const(7)  # R/W
 
+_REGISTER_STEP_TIME_GRP0 = const(0x29)  # R/W
+_REGISTER_STEP_TIME_GRP1 = const(0x2D)  # R/W
+_REGISTER_STEP_TIME_GRP2 = const(0x31)  # R/W
+_REGISTER_STEP_TIME_GRP3 = const(0x35)  # R/W
 #---------------------------------------------------------------#
 #   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
 #-------+-------+-------+-------+-------+-------+-------+-------|
-#  H ON | H OFF |          ON TIME      |        OFF TIME       |
+#   -   |CYCTIME|           FACTOR PER STEP                     |
 #---------------------------------------------------------------#
-_REGISTER_HOLD_CNTL_GRP0 = const(0x2B)  # R/W
-_BIT_HOLD_ON = const(7)                 #  Enable/disable (1 bit)
-_BIT_HOLD_OFF = const(6)                #  Enable/disable (1 bit)
-_BIT_HOLD_ON_TIME = const(3)            #  Hold On time (3 bits)
-_BIT_HOLD_OFF_TIME = const(0)           #  Hold Off time (3 bits)
+_BIT_POS_FACTOR_PER_STEP = const(0)  # R/W
+_BIT_POS_CYCLE_TIME = const(6)  # R/W
 
-_REGISTER_IREF_GRP0 = const(0x2C)        # R/W
-_REGISTER_GRAD_MODE_SEL0 = const(0x38)   # R/W
-_REGISTER_GRAD_MODE_SEL1 = const(0x39)   # R/W
-_REGISTER_GRAD_GRP_SEL0 = const(0x3A)    # R/W
-_REGISTER_GRAD_CTRL = const(0x3E)        # R/W
-_REGISTER_OFFSET = const(0x3F)           # R/W
-_REGISTER_PWMALL = const(0x44)           # W
-_REGISTER_IREALL = const(0x45)           # W
-_REGISTER_EFLAG0 = const(0x46)           # R
+_REGISTER_HOLD_CNTL_GRP0 = const(0x2A)  # R/W
+_REGISTER_HOLD_CNTL_GRP1 = const(0x2E)  # R/W
+_REGISTER_HOLD_CNTL_GRP2 = const(0x32)  # R/W
+_REGISTER_HOLD_CNTL_GRP3 = const(0x36)  # R/W
+#---------------------------------------------------------------#
+#   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
+#-------+-------+-------+-------+-------+-------+-------+-------|
+# HOLDON|HOLDOFF|      HOLD ON TIME     |     HOLD OFF TIME     |
+#---------------------------------------------------------------#
+_BIT_POS_HOLD_OFF_TIME = const(0)  # R/W
+_BIT_POS_HOLD_ON_TIME = const(3)  # R/W
+_BIT_POS_HOLD_OFF_ENABLE = const(6)  # R/W
+_BIT_POS_HOLD_ON_ENABLE = const(7)  # R/W
 
+_REGISTER_IREF_GRP0 = const(0x2B)  # R/W
+_REGISTER_IREF_GRP1 = const(0x2F)  # R/W
+_REGISTER_IREF_GRP2 = const(0x33)  # R/W
+_REGISTER_IREF_GRP3 = const(0x37)  # R/W
 
+_REGISTER_GRAD_MODE_SEL0 = const(0x38)  # R/W
+_REGISTER_GRAD_MODE_SEL1 = const(0x39)  # R/W
+
+_REGISTER_GRAD_GRP_SEL0 = const(0x3A)  # R/W
+_REGISTER_GRAD_GRP_SEL1 = const(0x3B)  # R/W
+_REGISTER_GRAD_GRP_SEL2 = const(0x3C)  # R/W
+_REGISTER_GRAD_GRP_SEL3 = const(0x3D)  # R/W
+#---------------------------------------------------------------#
+#   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
+#-------+-------+-------+-------+-------+-------+-------+-------|
+#      LED3     |      LED2     |      LED1     |      LEDO     | _REGISTER_GRAD_GRP_SEL0 
+#-------+-------+-------+-------+-------+-------+-------+-------|
+#      LED7     |      LED6     |      LED5     |      LED4     | _REGISTER_GRAD_GRP_SEL1
+#-------+-------+-------+-------+-------+-------+-------+-------|
+#      LED11    |      LED10    |      LED9     |      LED8     | _REGISTER_GRAD_GRP_SEL2
+#-------+-------+-------+-------+-------+-------+-------+-------|
+#      LED15    |      LED14    |      LED13    |      LED12    | _REGISTER_GRAD_GRP_SEL3
+#---------------------------------------------------------------#
+
+_REGISTER_GRAD_CNTL = const(0x3E)   # R/W
+#---------------------------------------------------------------#
+#   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
+#-------+-------+-------+-------+-------+-------+-------+-------|
+# START3| CONT3 | START2| CONT2 | START1| CONT1 | START0| CONT0 |
+#---------------------------------------------------------------#
+_BIT_POS_CONTINUOUS_0 = const(0)  # R/W
+_BIT_POS_START_0 = const(1)  # R/W
+_BIT_POS_CONTINUOUS_1 = const(2)  # R/W
+_BIT_POS_START_1 = const(3)  # R/W
+_BIT_POS_CONTINUOUS_2 = const(4)  # R/W
+_BIT_POS_START_2 = const(5)  # R/W
+_BIT_POS_CONTINUOUS_3 = const(6)  # R/W
+_BIT_POS_START_3 = const(7)  # R/W
+
+_REGISTER_OFFSET = const(0x3F)   # R/W
+#---------------------------------------------------------------#
+#   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
+#-------+-------+-------+-------+-------+-------+-------+-------|
+#               -               |        OUTPUT_DELAY           |
+#---------------------------------------------------------------#
+_BIT_POS_OUTPUT_DELAY = const(0)  # R/W
+
+_REGISTER_SUBADR1 = const(0x40)  # R/W
+_REGISTER_SUBADR2 = const(0x41)  # R/W
+_REGISTER_SUBADR3 = const(0x42)  # R/W
+_REGISTER_SALLCALLADR = const(0x43)  # R/W
+#---------------------------------------------------------------#
+#   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
+#-------+-------+-------+-------+-------+-------+-------+-------|
+#                  I2C_BUS_SUBADDRESS                   |   -   |
+#---------------------------------------------------------------#
+_BIT_POS_SUBADR = const(1)  # R/W
+
+_REGISTER_PWMALL = const(0x44)  # R/W
+_REGISTER_IREFALL = const(0x45)  # R/W
+
+_REGISTER_EFLAG0 = const(0x46) # R
+_REGISTER_EFLAG1 = const(0x47)  # R
+_REGISTER_EFLAG2 = const(0x48)  # R
+_REGISTER_EFLAG3 = const(0x49)  # R
+#---------------------------------------------------------------#
+#   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
+#-------+-------+-------+-------+-------+-------+-------+-------|
+#      LED3     |      LED2     |      LED1     |      LEDO     | _REGISTER_EFLAG0 
+#-------+-------+-------+-------+-------+-------+-------+-------|
+#      LED7     |      LED6     |      LED5     |      LED4     | _REGISTER_EFLAG1
+#-------+-------+-------+-------+-------+-------+-------+-------|
+#      LED11    |      LED10    |      LED9     |      LED8     | _REGISTER_EFLAG2
+#-------+-------+-------+-------+-------+-------+-------+-------|
+#      LED15    |      LED14    |      LED13    |      LED12    | _REGISTER_EFLAG3
+#---------------------------------------------------------------#
+
+# Bit Mask
 _1_BIT =  const(0b00000001)
 _2_BITS = const(0b00000011)
 _3_BITS = const(0b00000111)
+_4_BITS = const(0b00001111)
 _6_BITS = const(0b00111111)
-
-# User-facing constants:
-
-LED_DRIVER_OFF = const(0x00)
-LED_DRIVER_FULL_ON = const(0x01)
-LED_DRIVER_PWM = const(0x02)
-LED_DRIVER_PWM_GRP = const(0x03)
+_7_BITS = const(0b01111111)
 
 
-
-class Channel:
+class LedChannel:
     """A single PCA9955 channel
 
     :param PCA9955 device: The PCA9955 device object
     :param int index: The index of the channel
     """
+    # User-facing constants:
+    LED_ERROR_NONE = const(0x00)
+    LED_ERROR_SHORT_CIRCUIT = const(0x01)
+    LED_ERROR_OPEN_CIRCUIT = const(0x02)
+
+    LED_DRIVER_OFF = const(0x00)
+    LED_DRIVER_FULL_ON = const(0x01)
+    LED_DRIVER_PWM = const(0x02)
+    LED_DRIVER_PWM_GRP = const(0x03)
 
     def __init__(self, device: "PCA9955", index: int):
         self._device = device
@@ -129,24 +278,24 @@ class Channel:
     @property
     def brightness(self) -> int:
         """Channel brightness 0 - 255."""
-        return self._device.read_8(_REGISTER_PWM0 + self._index)
+        return self._device._read_8(_REGISTER_PWM0 + self._index)
 
     @brightness.setter
     def brightness(self, value: int) -> int:
         if not 0 <= value <= 255:
             raise ValueError("Value must be between 0 & 255")
-        self._device.write_8(_REGISTER_PWM0 + self._index, value)
+        self._device._write_8(_REGISTER_PWM0 + self._index, value)
 
     @property
     def gain(self) -> int:
         """Channel curent gain 0 - 255."""
-        return self._device.read_8(_REGISTER_IREF0 + self._index)
+        return self._device._read_8(_REGISTER_IREF0 + self._index)
 
     @gain.setter
     def gain(self, value: int) -> int:
         if not 0 <= value <= 255:
             raise ValueError("Value must be between 0 & 255")
-        self._device.write_8(_REGISTER_IREF0 + self._index, value)
+        self._device._write_8(_REGISTER_IREF0 + self._index, value)
 
     @property
     def output_state(self) -> int:
@@ -155,8 +304,8 @@ class Channel:
 
     @output_state.setter
     def output_state(self, value: int) -> int:
-        if not LED_DRIVER_OFF <= value <= LED_DRIVER_PWM_GRP:
-            raise ValueError(f"Value must be between {LED_DRIVER_OFF} & {LED_DRIVER_PWM_GRP}")
+        if not LedChannel.LED_DRIVER_OFF <= value <= LedChannel.LED_DRIVER_PWM_GRP:
+            raise ValueError(f"Value must be between {LedChannel.LED_DRIVER_OFF} & {LedChannel.LED_DRIVER_PWM_GRP}")
         self._device.write_channel_config(_REGISTER_LEDOUT0, self._index, value)
 
     @property
@@ -176,7 +325,7 @@ class Channel:
         self._device.write_channel_config(_REGISTER_GRAD_GRP_SEL0, self._index, value)
 
 
-class Channels:  # pylint: disable=too-few-public-methods
+class LedChannels:  # pylint: disable=too-few-public-methods
     """Lazily creates and caches channel objects as needed. Treat it like a sequence.
 
     :param PCA9955 device: The PCA9955 device object
@@ -185,18 +334,18 @@ class Channels:  # pylint: disable=too-few-public-methods
     def __init__(self, device: "PCA9955") -> None:
         self._device = device
         self._channels = [None] * len(self)
-
+ 
     def __len__(self) -> int:
         return 16
 
-    def __getitem__(self, index: int) -> Channel:
+    def __getitem__(self, index: int) -> LedChannel:
         if not self._channels[index]:
-            self._channels[index] = Channel(self._device, index)
+            self._channels[index] = LedChannel(self._device, index)
         return self._channels[index]
 
 
 class Group:
-    """A PCA9955 Graduation Group (set of channels)
+    """A single PCA9685 cGraduation Group.
 
     :param PCA9955 device: The PCA9955 device object
     :param int index: The index of the channel
@@ -206,97 +355,96 @@ class Group:
         self._device = device
         self._index = index
 
-
     @property
     def ramp_up(self) -> bool:
         """Ramp-up enable/disable."""
-        return self._device.read_register(_REGISTER_RAMP_RATE_GRP0, self._index, _1_BIT,_BIT_RAMP_UP)
+        return self._device.read_register(_REGISTER_RAMP_RATE_GRP0, index = self._index, mask = _1_BIT, offset =_BIT_POS_RAMP_UP_ENABLE)
 
     @ramp_up.setter
     def ramp_up(self, value: bool) -> bool:
-        self._device.write_register(_REGISTER_RAMP_RATE_GRP0, self._index, value, _1_BIT, _BIT_RAMP_UP)
+        self._device.write_register(_REGISTER_RAMP_RATE_GRP0, value, index = self._index, mask = _1_BIT, offset = _BIT_POS_RAMP_UP_ENABLE)
 
     @property
     def ramp_down(self) -> bool:
         """Ramp-down enable/disable."""
-        return self._device.read_register(_REGISTER_RAMP_RATE_GRP0, self._index, _1_BIT, _BIT_RAMP_DOWN)
+        return self._device.read_register(_REGISTER_RAMP_RATE_GRP0,  index = self._index, mask = _1_BIT, offset = _BIT_POS_RAMP_DOWN_ENABLE)
 
     @ramp_down.setter
     def ramp_down(self, value: bool) -> bool:
-        self._device.write_register(_REGISTER_RAMP_RATE_GRP0, self._index, value, _1_BIT, _BIT_RAMP_DOWN)
+        self._device.write_register(_REGISTER_RAMP_RATE_GRP0, value, index = self._index, mask = _1_BIT, offset = _BIT_POS_RAMP_DOWN_ENABLE)
 
     @property
     def ramp_rate(self) -> int:
         """Ramp rate per step 0 - 64."""
-        return self._device.read_register(_REGISTER_RAMP_RATE_GRP0, self._index, _6_BITS, _BIT_RAMP_RATE)
+        return self._device.read_register(_REGISTER_RAMP_RATE_GRP0, index = self._index, mask = _6_BITS, offset = _BIT_POS_RAMP_RATE)
 
     @ramp_rate.setter
     def ramp_rate(self, value: int) -> int:
         if not 0 <= value <= 64:
             raise ValueError("Value must be between 0 & 64")
-        self._device.write_register(_REGISTER_RAMP_RATE_GRP0, self._index, value, _6_BITS, _BIT_RAMP_RATE)
+        self._device.write_register(_REGISTER_RAMP_RATE_GRP0, value, index = self._index, mask = _6_BITS, offset = _BIT_POS_RAMP_RATE)
 
     @property
     def cycle_time(self) -> int:
         """Cycle time - 0 (0.5ms) or 1 (8ms)."""
-        return self._device.read_register(_REGISTER_STEP_TIME_GRP0 , self._index, _1_BIT, _BIT_CYCLE_TIME)
+        return self._device.read_register(_REGISTER_STEP_TIME_GRP0 , index = self._index, mask = _1_BIT, offset = _BIT_POS_CYCLE_TIME)
 
     @cycle_time.setter
     def cycle_time(self, value: int) -> int:
-        if not 0 <= value <= 64:
+        if not 0 <= value <= 1:
             raise ValueError("Valid values are 0 (0.5ms) or 1 (8ms)")
-        self._device.write_register(_REGISTER_STEP_TIME_GRP0, self._index, value, _1_BIT, _BIT_CYCLE_TIME)
+        self._device.write_register(_REGISTER_STEP_TIME_GRP0, value, index = self._index, mask = _1_BIT, offset = _BIT_POS_CYCLE_TIME)
 
     @property
     def factor_per_step(self) -> int:
         """Multiple factor per step 0 - 64."""
-        return self._device.read_register(_REGISTER_STEP_TIME_GRP0, self._index, _6_BITS, _BIT_FACTOR_PER_STEP)
+        return self._device.read_register(_REGISTER_STEP_TIME_GRP0, index = self._index, mask =_6_BITS, offset = _BIT_POS_FACTOR_PER_STEP)
 
     @factor_per_step.setter
     def factor_per_step(self, value: int) -> int:
         if not 0 <= value <= 64:
             raise ValueError("Value must be between 0 & 64")
-        self._device.write_register(_REGISTER_STEP_TIME_GRP0, self._index, value, _6_BITS, _BIT_FACTOR_PER_STEP)
+        self._device.write_register(_REGISTER_STEP_TIME_GRP0, value, index = self._index, mask = _6_BITS, offset = _BIT_POS_FACTOR_PER_STEP)
 
     @property
     def hold_on(self) -> bool:
         """Hold on enable/disable."""
-        return self._device.read_register(_REGISTER_HOLD_CNTL_GRP0, self._index, _1_BIT, _BIT_HOLD_ON)
+        return self._device.read_register(_REGISTER_HOLD_CNTL_GRP0, index = self._index, mask = _1_BIT, offset = _BIT_POS_HOLD_ON_ENABLE)
 
     @hold_on.setter
     def hold_on(self, value: bool) -> bool:
-        self._device.write_register(_REGISTER_HOLD_CNTL_GRP0, self._index, value, _1_BIT, _BIT_HOLD_ON)
+        self._device.write_register(_REGISTER_HOLD_CNTL_GRP0, value, index = self._index, mask = _1_BIT, offset =_BIT_POS_HOLD_ON_ENABLE)
 
     @property
     def hold_off(self) -> bool:
         """Hold off enable/disable."""
-        return self._device.read_register(_REGISTER_HOLD_CNTL_GRP0, self._index, _1_BIT, _BIT_HOLD_OFF)
+        return self._device.read_register(_REGISTER_HOLD_CNTL_GRP0, index = self._index, mask =_1_BIT, offset = _BIT_POS_HOLD_OFF_ENABLE)
 
     @hold_off.setter
     def hold_off(self, value: bool) -> bool:
-        self._device.write_register(_REGISTER_HOLD_CNTL_GRP0, self._index, value, _1_BIT, _BIT_HOLD_OFF)
+        self._device.write_register(_REGISTER_HOLD_CNTL_GRP0, value, index = self._index, mask = _1_BIT, offset = _BIT_POS_HOLD_OFF_ENABLE)
 
     @property
     def hold_on_time(self) -> int:
         """Hold On time - 0 (0s), 1 (0.25s), 2 (0.5s), 3 (0.75s), 4 (1s), 5 (2s), 6 (4s), 7 (6s)."""
-        return self._device.read_register(_REGISTER_HOLD_CNTL_GRP0, self._index, _3_BITS, _BIT_HOLD_ON_TIME)
+        return self._device.read_register(_REGISTER_HOLD_CNTL_GRP0, index = self._index, mask = _3_BITS, offset = _BIT_POS_HOLD_ON_TIME)
 
     @hold_on_time.setter
     def hold_on_time(self, value: int) -> int:
         if not 0 <= value <= 64:
             raise ValueError("Valid values are 0 (0s), 1 (0.25s), 2 (0.5s), 3 (0.75s), 4 (1s), 5 (2s), 6 (4s), 7 (6s)")
-        self._device.write_register(_REGISTER_HOLD_CNTL_GRP0, self._index, value, _3_BITS, _BIT_HOLD_ON_TIME)
+        self._device.write_register(_REGISTER_HOLD_CNTL_GRP0, value, index = self._index, mask = _3_BITS, offset =_BIT_POS_HOLD_ON_TIME)
 
     @property
     def hold_off_time(self) -> int:
         """Hold On time  - 0 (0s), 1 (0.25s), 2 (0.5s), 3 (0.75s), 4 (1s), 5 (2s), 6 (4s), 7 (6s)."""
-        return self._device.read_register(_REGISTER_HOLD_CNTL_GRP0, self._index, _3_BITS, _BIT_HOLD_OFF_TIME)
+        return self._device.read_register(_REGISTER_HOLD_CNTL_GRP0, index = self._index, mask = _3_BITS, offset = _BIT_POS_HOLD_OFF_TIME)
 
     @hold_off_time.setter
     def hold_off_time(self, value: int) -> int:
         if not 0 <= value <= 64:
             raise ValueError("Valid values are 0 (0s), 1 (0.25s), 2 (0.5s), 3 (0.75s), 4 (1s), 5 (2s), 6 (4s), 7 (6s)")
-        self._device.write_register(_REGISTER_HOLD_CNTL_GRP0, self._index, value, _3_BITS, _BIT_HOLD_OFF_TIME)
+        self._device.write_register(_REGISTER_HOLD_CNTL_GRP0, value, index = self._index, mask = _3_BITS, offset = _BIT_POS_HOLD_OFF_TIME)
 
     @property
     def output_gain_control(self) -> int:
@@ -305,9 +453,9 @@ class Group:
 
     @output_gain_control.setter
     def output_gain_control(self, value: int) -> int:
-        if not 0 <= value <= 64:
-            raise ValueError("Valid values are 0 (0s), 1 (0.25s), 2 (0.5s), 3 (0.75s), 4 (1s), 5 (2s), 6 (4s), 7 (6s)")
-        self._device.write_register(_REGISTER_IREF_GRP0, self._index, value)
+        if not 0 <= value <= 255:
+            raise ValueError("Valid values are  0-255")
+        self._device.write_register(_REGISTER_IREF_GRP0, value, index = self._index)
 
 
 class Groups:  # pylint: disable=too-few-public-methods
@@ -321,7 +469,7 @@ class Groups:  # pylint: disable=too-few-public-methods
         self.groups = [None] * len(self)
 
     def __len__(self) -> int:
-        return 16
+        return 4
 
     def __getitem__(self, index: int) -> Group:
         if not self.groups[index]:
@@ -338,10 +486,14 @@ class PCA9955:
     :param int reference_clock_speed: The frequency of the internal reference clock in Hertz.
     """
 
+    SUBADR1 = const(0) # offset from _REGISTER_SUBADR1
+    SUBADR2 = const(1)
+    SUBADR3 = const(2)
+    ALLCALLADR = const(3)
 
-    def __init__(self, i2c: I2C, address: int) -> None:
+    def __init__(self, i2c: I2C, address: int = _PCA9955B_DEFAULT_I2C_ADDR) -> None:
         self._device = i2c_device.I2CDevice(i2c, address)
-        self.channels = Channels(self)
+        self.channels = LedChannels(self)
         self.groups = Groups(self)
 
     def __enter__(self) -> "PCA9955":
@@ -359,70 +511,106 @@ class PCA9955:
         """Stop using the PCA9955."""
 
     @property
-    def brightness(self) -> int:
-        """Global brightness 0 - 255."""
+    def brightness(self) -> NoReturn:
+        """Global brightness 0 - 255.""" 
         raise AttributeError("brightness is write-only")
-
+    
     @brightness.setter
-    def brightness(self, value: int) -> int:
-        self.write_8(_REGISTER_PWMALL, value)
+    def brightness(self, value: int) -> None:
+        self._write_8(_REGISTER_PWMALL, value)
 
     @property
-    def output_current(self) -> int:
+    def output_current(self) -> NoReturn:
         """Global output currrent 0 - 255."""
-        raise AttributeError("brightness is write-only")
+        raise AttributeError("Output current is write-only")
 
     @output_current.setter
     def output_current(self, value: int) -> int:
-        self.write_8(_REGISTER_IREALL, value)
+        self._write_8(_REGISTER_IREFALL, value)
 
     @property
     def over_temp(self) -> bool:
         """True indicates over temperature condition."""
-        return bool(self.read_register(_REGISTER_MODE2,  mask = _1_BIT, offset = _BIT_OVERTEMP))
+        return bool(self.read_register(_REGISTER_MODE2, mask = _1_BIT, offset = _BIT_POS_OVERTEMP))
+    
+    @over_temp.setter
+    def over_temp(self) -> NoReturn:
+        raise AttributeError("Over Temp is read-only")
 
     @property
     def errors_exist(self) -> bool:
-        """True indicates over temperature condition."""
-        return bool(self.read_register(_REGISTER_MODE2,  mask = _1_BIT, offset = _BIT_ERROR))
+        """True indicates errors exist."""
+        return bool(self.read_register(_REGISTER_MODE2, mask = _1_BIT, offset = _BIT_POS_ERROR))
+    
+    @errors_exist.setter
+    def errors_exist(self) -> NoReturn:
+        raise AttributeError("Errors Exist is read-only")
+
+    @property
+    def low_power_mode(self) -> bool:
+        return bool(self.read_register(_REGISTER_MODE1, mask = _1_BIT, offset = _BIT_POS_SLEEP))
+    
+    @low_power_mode.setter
+    def low_power_mode(self, value: bool) -> None:
+        self.write_register(_REGISTER_MODE1, value, mask = _1_BIT, offset =_BIT_POS_SLEEP)
+
+    @property
+    def aif(self) -> bool:
+        return bool(self.read_register(_REGISTER_MODE1, mask = _1_BIT, offset = _BIT_POS_AIF))
+    
+    @aif.setter
+    def aif(self, value: bool) -> NoReturn:
+        raise AttributeError("AIF is read-only")
+
+    def get_i2c_address(self, addr:int) -> int:
+        return int(self.read_register(_REGISTER_SUBADR1, index = addr, mask = _7_BITS, offset = _BIT_POS_SUBADR))
+
+    def set_i2c_address(self, addr:int, value: int) -> None:
+        self.write_register(_REGISTER_SUBADR1, value, index = addr, mask = _7_BITS, offset = _BIT_POS_SUBADR)
+
+
 
     def read_register(self, base_register: int, index: int = 0, mask: int = 0xFF, offset: int = 0) -> int:
         """Read set of bits from register"""
         register = base_register + index
         mask = mask << offset
-        result = self.read_8(register)
-        return (result & mask) >> offset
+        reg = self._read_8(register)
+        result = (reg & mask) >> offset
+        print(f"rr - reg:{register:#x} offset:{offset:#x} reg: {reg:08b} mask:{mask:08b} value:0x{result:02x}")
+        return result
 
-    def write_register(self, base_register: int, index: int, value: int, mask: int = 0xFF, offset: int = 0) -> int:
+    def write_register(self, base_register: int, value: int, index: int = 0, mask: int = 0xFF, offset: int = 0) -> None:
         """Write set of bits to register"""
         register = base_register + index
         mask = mask << offset
         inverse_mask = ~mask & 0xFF
-        current_value = self.read_8(register)
-        value = (current_value & inverse_mask) | (value << offset)
-        result = self.write_8(register, value)
-        return (result & mask) >> offset
+        reg = self._read_8(register)
+        value = (reg & inverse_mask) | (value << offset)
+        self._write_8(register, value)
+        print(f"wr - reg:{register:#x} offset:{offset:#x} reg: {reg:08b} mask:{mask:08b} value:0x{value:02x}")
 
     def read_channel_config(self, base_register: int, index: int) -> int:
         """Read channel configuration register"""
         register = base_register + (index >> 2)
         offset = (index % 4) << 1
         mask = _2_BITS << offset
-        result = self.read_8(register)
-        return (result & mask) >> offset
+        reg = self._read_8(register)
+        result = (reg & mask) >> offset
+        print(f"rc - reg:{register:#x} offset:{offset:#x} reg: {reg:08b} mask:{mask:08b} value:0x{result:02x}")
+        return result
 
-    def write_channel_config(self, base_register: int, index: int, value: int) -> int:
+    def write_channel_config(self, base_register: int, index: int, value: int) -> None:
         """Write channel configuration register"""
         register = base_register + (index >> 2)
         offset = (index % 4) << 1
         mask = _2_BITS << offset
         inverse_mask = ~mask & 0xFF
-        current_value = self.read_8(register)
-        value = (current_value & inverse_mask) | (value << offset)
-        result = self.write_8(register, value)
-        return (result & mask) >> offset
+        reg = self._read_8(register)
+        value = (reg & inverse_mask) | (value << offset)
+        self._write_8(register, value)
+        print(f"wc - reg:{register:#x} offset:{offset:#x} reg: {reg:08b} mask:{mask:08b} value:0x{value:02x}")
 
-    def read_8(self, address: int) -> int:
+    def _read_8(self, address: int) -> int:
         """ Read and return a byte from the specified 8-bit register address."""
         result = bytearray(1)
         with self._device as i2c:
@@ -430,11 +618,10 @@ class PCA9955:
             i2c.readinto(result)
         return result[0]
 
-    def write_8(self, address: int, value: int) -> int:
+    def _write_8(self, address: int, value: int) -> None:
         """ write a byte to the specified 8-bit register address."""
         result = bytearray(1)
         with self._device as i2c:
             i2c.write(bytes([address, value]))
             i2c.write(bytes([address]))
             i2c.readinto(result)
-        return result[0]

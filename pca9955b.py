@@ -97,7 +97,6 @@ _REGISTER_GRPFREQ = const(0x07)  # R/W
 _REGISTER_PWM0 = const(0x08)   # R/W 
 # PWM1 - PWM15 repeats
 
-
 _REGISTER_IREF0 = const(0x18)   # R/W
 # IREF1 - IREF15 repeats
 
@@ -568,6 +567,7 @@ class PCA9955:
     def clear_errors(self) -> None:
         self.write_register(_REGISTER_MODE2, 0x01, mask = _1_BIT, offset = _BIT_POS_CLRERR)
 
+    # I2C Sub Address constants
     SUBADR1 = const(0) # offset from _REGISTER_SUBADR1
     SUBADR2 = const(1)
     SUBADR3 = const(2)
@@ -585,7 +585,7 @@ class PCA9955:
 
 
     def read_register(self, base_register: int, index: int = 0, mask: int = 0xFF, offset: int = 0) -> int:
-        """Read set of bits from register"""
+        """ Read set of bits from register"""
         register = base_register + index
         mask = mask << offset
         reg = self._read_8(register)
@@ -594,7 +594,7 @@ class PCA9955:
         return result
 
     def write_register(self, base_register: int, value: int, index: int = 0, mask: int = 0xFF, offset: int = 0) -> None:
-        """Write set of bits to register"""
+        """ Write set of bits to register"""
         register = base_register + index
         mask = mask << offset
         inverse_mask = ~mask & 0xFF
@@ -604,7 +604,7 @@ class PCA9955:
         print(f"wr - reg:{register:#x} offset:{offset:#x} reg: {reg:08b} mask:{mask:08b} value:0x{value:02x}")
 
     def read_channel_config(self, base_register: int, index: int) -> int:
-        """Read channel configuration register"""
+        """ Read channel configuration register"""
         register = base_register + (index >> 2)
         offset = (index % 4) << 1
         mask = _2_BITS << offset
@@ -614,7 +614,7 @@ class PCA9955:
         return result
 
     def write_channel_config(self, base_register: int, index: int, value: int) -> None:
-        """Write channel configuration register"""
+        """ Write channel configuration register"""
         register = base_register + (index >> 2)
         offset = (index % 4) << 1
         mask = _2_BITS << offset
@@ -633,7 +633,7 @@ class PCA9955:
         return result[0]
 
     def _write_8(self, address: int, value: int) -> None:
-        """ write a byte to the specified 8-bit register address."""
+        """ Write a byte to the specified 8-bit register address."""
         result = bytearray(1)
         with self._device as i2c:
             i2c.write(bytes([address, value]))

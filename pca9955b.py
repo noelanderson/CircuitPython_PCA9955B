@@ -74,9 +74,7 @@ _BIT_POS_ERROR = const(6)  # R
 _BIT_POS_OVERTEMP = const(7)  # R
 
 _REGISTER_LEDOUT0 = const(0x02)   # R/W
-_REGISTER_LEDOUT1 = const(0x03)   # R/W
-_REGISTER_LEDOUT2 = const(0x04)   # R/W
-_REGISTER_LEDOUT3 = const(0x05)   # R/W
+# LEDOUT1 - LEDOUT3 repeats
 #---------------------------------------------------------------#
 #   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
 #-------+-------+-------+-------+-------+-------+-------+-------|
@@ -96,44 +94,15 @@ _BIT_POS_LED3 = _BIT_POS_LED7 = _BIT_POS_LED11 = _BIT_POS_LED15 = const(6)  # R/
 _REGISTER_GRPPWM = const(0x06)   # R/W
 _REGISTER_GRPFREQ = const(0x07)  # R/W
 
-_REGISTER_PWM0 = const(0x08)   # R/W
-_REGISTER_PWM1 = const(0x09)   # R/W
-_REGISTER_PWM2 = const(0x0A)   # R/W
-_REGISTER_PWM3 = const(0x0B)   # R/W
-_REGISTER_PWM4 = const(0x0C)   # R/W
-_REGISTER_PWM5 = const(0x0D)   # R/W
-_REGISTER_PWM6 = const(0x0E)   # R/W
-_REGISTER_PWM7 = const(0x0F)   # R/W
-_REGISTER_PWM8 = const(0x10)   # R/W
-_REGISTER_PWM9 = const(0x11)   # R/W
-_REGISTER_PWM10 = const(0x12)  # R/W
-_REGISTER_PWM11 = const(0x13)  # R/W
-_REGISTER_PWM12 = const(0x14)  # R/W
-_REGISTER_PWM13 = const(0x15)  # R/W
-_REGISTER_PWM14 = const(0x16)  # R/W
-_REGISTER_PWM15 = const(0x17)  # R/W
+_REGISTER_PWM0 = const(0x08)   # R/W 
+# PWM1 - PWM15 repeats
+
 
 _REGISTER_IREF0 = const(0x18)   # R/W
-_REGISTER_IREF1 = const(0x19)   # R/W
-_REGISTER_IREF2 = const(0x1A)   # R/W
-_REGISTER_IREF3 = const(0x1B)   # R/W
-_REGISTER_IREF4 = const(0x1C)   # R/W
-_REGISTER_IREF5 = const(0x1D)   # R/W
-_REGISTER_IREF6 = const(0x1E)   # R/W
-_REGISTER_IREF7 = const(0x1F)   # R/W
-_REGISTER_IREF8 = const(0x20)   # R/W
-_REGISTER_IREF9 = const(0x21)   # R/W
-_REGISTER_IREF10 = const(0x22)  # R/W
-_REGISTER_IREF11 = const(0x23)  # R/W
-_REGISTER_IREF12 = const(0x24)  # R/W
-_REGISTER_IREF13 = const(0x25)  # R/W
-_REGISTER_IREF14 = const(0x26)  # R/W
-_REGISTER_IREF15 = const(0x27)  # R/W
+# IREF1 - IREF15 repeats
 
 _REGISTER_RAMP_RATE_GRP0 = const(0x28)  # R/W
-_REGISTER_RAMP_RATE_GRP1 = const(0x2C)  # R/W
-_REGISTER_RAMP_RATE_GRP2 = const(0x30)  # R/W
-_REGISTER_RAMP_RATE_GRP3 = const(0x34)  # R/W
+# GRP1 - GRP3 repeats
 #---------------------------------------------------------------#
 #   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
 #-------+-------+-------+-------+-------+-------+-------+-------|
@@ -144,9 +113,7 @@ _BIT_POS_RAMP_DOWN_ENABLE = const(6)  # R/W
 _BIT_POS_RAMP_UP_ENABLE = const(7)  # R/W
 
 _REGISTER_STEP_TIME_GRP0 = const(0x29)  # R/W
-_REGISTER_STEP_TIME_GRP1 = const(0x2D)  # R/W
-_REGISTER_STEP_TIME_GRP2 = const(0x31)  # R/W
-_REGISTER_STEP_TIME_GRP3 = const(0x35)  # R/W
+# GRP1 - GRP3 repeats
 #---------------------------------------------------------------#
 #   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
 #-------+-------+-------+-------+-------+-------+-------+-------|
@@ -156,9 +123,7 @@ _BIT_POS_FACTOR_PER_STEP = const(0)  # R/W
 _BIT_POS_CYCLE_TIME = const(6)  # R/W
 
 _REGISTER_HOLD_CNTL_GRP0 = const(0x2A)  # R/W
-_REGISTER_HOLD_CNTL_GRP1 = const(0x2E)  # R/W
-_REGISTER_HOLD_CNTL_GRP2 = const(0x32)  # R/W
-_REGISTER_HOLD_CNTL_GRP3 = const(0x36)  # R/W
+# GRP1 - GRP3 repeats
 #---------------------------------------------------------------#
 #   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
 #-------+-------+-------+-------+-------+-------+-------+-------|
@@ -170,17 +135,13 @@ _BIT_POS_HOLD_OFF_ENABLE = const(6)  # R/W
 _BIT_POS_HOLD_ON_ENABLE = const(7)  # R/W
 
 _REGISTER_IREF_GRP0 = const(0x2B)  # R/W
-_REGISTER_IREF_GRP1 = const(0x2F)  # R/W
-_REGISTER_IREF_GRP2 = const(0x33)  # R/W
-_REGISTER_IREF_GRP3 = const(0x37)  # R/W
+# GRP1 - GRP3 repeats
 
 _REGISTER_GRAD_MODE_SEL0 = const(0x38)  # R/W
 _REGISTER_GRAD_MODE_SEL1 = const(0x39)  # R/W
 
 _REGISTER_GRAD_GRP_SEL0 = const(0x3A)  # R/W
-_REGISTER_GRAD_GRP_SEL1 = const(0x3B)  # R/W
-_REGISTER_GRAD_GRP_SEL2 = const(0x3C)  # R/W
-_REGISTER_GRAD_GRP_SEL3 = const(0x3D)  # R/W
+# GRP1 - GRP3 repeats
 #---------------------------------------------------------------#
 #   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
 #-------+-------+-------+-------+-------+-------+-------+-------|
@@ -231,9 +192,7 @@ _REGISTER_PWMALL = const(0x44)  # R/W
 _REGISTER_IREFALL = const(0x45)  # R/W
 
 _REGISTER_EFLAG0 = const(0x46) # R
-_REGISTER_EFLAG1 = const(0x47)  # R
-_REGISTER_EFLAG2 = const(0x48)  # R
-_REGISTER_EFLAG3 = const(0x49)  # R
+# EFLAG1 - EFLAG3 repeats
 #---------------------------------------------------------------#
 #   7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
 #-------+-------+-------+-------+-------+-------+-------+-------|

@@ -324,6 +324,19 @@ class LedChannel:
             raise ValueError(f"Group must be between 0 and 3")
         self._device.write_channel_config(_REGISTER_GRAD_GRP_SEL0, self._index, value)
 
+    @property
+    def graduation_mode_select(self) -> bool:
+        """1 = grad mode, 0 = normal"""
+        offset = self._index % 8
+        index =  0 if self.index < 7 else 1
+        return bool (self._device.read_register(_REGISTER_GRAD_MODE_SEL0, index = index, mask = _1_BIT, offset = offset))
+
+    @graduation_mode_select.setter
+    def graduation_mode_select(self, value: bool) -> None:
+        offset = self._index % 8
+        index =  0 if self.index < 7 else 1
+        self._device.write_register(_REGISTER_GRAD_MODE_SEL0, int(value), index = index, mask = _1_BIT, offset = offset)
+
 
 class LedChannels:  # pylint: disable=too-few-public-methods
     """Lazily creates and caches channel objects as needed. Treat it like a sequence.
@@ -486,11 +499,6 @@ class PCA9955:
     :param int reference_clock_speed: The frequency of the internal reference clock in Hertz.
     """
 
-    SUBADR1 = const(0) # offset from _REGISTER_SUBADR1
-    SUBADR2 = const(1)
-    SUBADR3 = const(2)
-    ALLCALLADR = const(3)
-
     def __init__(self, i2c: I2C, address: int = _PCA9955B_DEFAULT_I2C_ADDR) -> None:
         self._device = i2c_device.I2CDevice(i2c, address)
         self.channels = LedChannels(self)
@@ -562,12 +570,59 @@ class PCA9955:
     def aif(self, value: bool) -> NoReturn:
         raise AttributeError("AIF is read-only")
 
+    @property
+    def exponential_graduation(self) -> bool:
+        """1 = exponential adjustment for gradation control, 0 = linear adjustment for gradation control (default)"""
+        return bool(self.read_register(_REGISTER_MODE1, mask = _1_BIT, offset = _BIT_POS_EXP_EN))
+    
+    @exponential_graduation.setter
+    def exponential_graduation(self, value: bool) -> None:
+        self.write_register(_REGISTER_MODE1, int(value), mask = _1_BIT, offset =_BIT_POS_SLEEP)
+
+    @property
+    def group_blinking(self) -> bool:
+        """1 = group control - blinking, 0 =  group control - dimming (default)"""
+        return bool(self.read_register(_REGISTER_MODE1, mask = _1_BIT, offset = _BIT_POS_DMBLNK))
+    
+    @group_blinking.setter
+    def group_blinking(self, value: bool) -> None:
+        self.write_register(_REGISTER_MODE1, int(value), mask = _1_BIT, offset =_BIT_POS_DMBLNK)
+
+    @property
+    def group_pwm(self) -> int:
+        """Global brightness control when group_blinking = 0)"""
+        return self._read_8(_REGISTER_GRPPWM)
+    
+    @group_pwm.setter
+    def group_pwm(self, value: int) -> None:
+        self._write_8(_REGISTER_GRPPWM, value)
+
+    @property
+    def group_frequency(self) -> int:
+        """Global blinking frequency  control when group_blinking = 1)"""
+        return self._read_8(_REGISTER_GRPFREQ)
+    
+    @group_frequency.setter
+    def group_frequency(self, value: int) -> None:
+        self._write_8(_REGISTER_GRPFREQ, value)
+
+    def clear_errors(self) -> None:
+        self.write_register(_REGISTER_MODE2, 0x01, mask = _1_BIT, offset = _BIT_POS_CLRERR)
+
+    SUBADR1 = const(0) # offset from _REGISTER_SUBADR1
+    SUBADR2 = const(1)
+    SUBADR3 = const(2)
+    ALLCALLADR = const(3)
+
     def get_i2c_address(self, addr:int) -> int:
+        if addr not in [PCA9955.SUBADR1, PCA9955.SUBADR2, PCA9955.SUBADR3, PCA9955.ALLCALLADR ]:
+            raise ValueError(f"Value must be bone of {PCA9955.SUBADR1}, {PCA9955.SUBADR2}, {PCA9955.SUBADR3} or {PCA9955.ALLCALLADR}")
         return int(self.read_register(_REGISTER_SUBADR1, index = addr, mask = _7_BITS, offset = _BIT_POS_SUBADR))
 
     def set_i2c_address(self, addr:int, value: int) -> None:
+        if addr not in [PCA9955.SUBADR1, PCA9955.SUBADR2, PCA9955.SUBADR3, PCA9955.ALLCALLADR ]:
+            raise ValueError(f"Value must be bone of {PCA9955.SUBADR1}, {PCA9955.SUBADR2}, {PCA9955.SUBADR3} or {PCA9955.ALLCALLADR}")
         self.write_register(_REGISTER_SUBADR1, value, index = addr, mask = _7_BITS, offset = _BIT_POS_SUBADR)
-
 
 
     def read_register(self, base_register: int, index: int = 0, mask: int = 0xFF, offset: int = 0) -> int:

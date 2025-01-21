@@ -43,9 +43,10 @@ try:
 except ImportError:
     pass
 
-import pca9955_registers as PCA9955REG
 from adafruit_bus_device import i2c_device
 from digitalio import DigitalInOut, Direction, DriveMode
+
+from . import pca9955_registers as PCA9955REG
 
 # Constants
 _PCA9955B_DEFAULT_I2C_ADDR = const(0x3F)  # AD10 AD1 & AD2 all FLT (Floating Inputs)

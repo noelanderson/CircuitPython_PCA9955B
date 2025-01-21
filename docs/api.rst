@@ -7,5 +7,5 @@
 API Reference
 #############
 
-.. automodule:: pca9955b
+.. automodule:: pca9955b.pca9955b
     :members:

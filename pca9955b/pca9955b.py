@@ -218,7 +218,7 @@ class LedChannel:
         )
 
 
-class LedChannels:  # pylint: disable=too-few-public-methods
+class LedChannels:
     """Lazily creates and caches channel objects as needed. Treat it like a sequence.
 
     :param PCA9955 device: The PCA9955 device object
@@ -485,7 +485,7 @@ class Group:
         self._device.write_register(PCA9955REG.GRAD_CNTL, 0x00, mask=_1_BIT, bit_offset=bit_offset)
 
 
-class Groups:  # pylint: disable=too-few-public-methods
+class Groups:
     """Lazily creates and caches Group objects as needed. Treat it like a sequence.
 
     :param PCA9955 device: The PCA9955 device object
@@ -504,7 +504,7 @@ class Groups:  # pylint: disable=too-few-public-methods
         return self.groups[index]
 
 
-class I2CSubAddress:  # pylint: disable=too-few-public-methods
+class I2CSubAddress:
     """A single PCA9955 I2C Sub Address.
 
     :param PCA9955 device: The PCA9955 device object
@@ -561,7 +561,7 @@ class I2CSubAddress:  # pylint: disable=too-few-public-methods
         )
 
 
-class I2CSubAddresses:  # pylint: disable=too-few-public-methods
+class I2CSubAddresses:
     """Lazily creates and caches I2CSubAddress objects as needed. Treat it like a sequence.
 
     :param PCA9955 device: The PCA9955 device object
@@ -580,7 +580,7 @@ class I2CSubAddresses:  # pylint: disable=too-few-public-methods
         return self.i2c_addresses[index]
 
 
-class PCA9955:
+class PCA9955:  # noqa PLR0904
     """A class representing a PCA9955 device.
 
     This class provides an interface to control the PCA9955 LED driver via I2C.
@@ -693,8 +693,7 @@ class PCA9955:
         )
 
     @over_temp.setter
-    # pylint: disable=no-self-use
-    def over_temp(self) -> NoReturn:
+    def over_temp(self) -> NoReturn:  # noqa PLR6301
         raise AttributeError("Over Temp is read-only")
 
     @property
@@ -705,8 +704,7 @@ class PCA9955:
         )
 
     @errors_exist.setter
-    # pylint: disable=no-self-use
-    def errors_exist(self) -> NoReturn:
+    def errors_exist(self) -> NoReturn:  # noqa PLR6301
         raise AttributeError("Errors Exist is read-only")
 
     @property
@@ -728,8 +726,7 @@ class PCA9955:
         )
 
     @auto_increment_flag.setter
-    # pylint: disable=no-self-use
-    def auto_increment_flag(self, value: bool) -> NoReturn:
+    def auto_increment_flag(self, value: bool) -> NoReturn:  # noqa PLR6301
         raise AttributeError("AIF is read-only")
 
     @property
@@ -803,7 +800,7 @@ class PCA9955:
 
     @output_delay_offset.setter
     def output_delay_offset(self, value: int) -> None:
-        if value not in [0x00, 0x01, 0x02, 0x03, 0x0F]:
+        if value not in {0x00, 0x01, 0x02, 0x03, 0x0F}:
             raise ValueError(
                 f"Value must be one of {0x00:00x}, {0x01:02x}, {0x02:02x}, {0x03:02x} or{0x0F:02x}"
             )
@@ -842,8 +839,7 @@ class PCA9955:
         )
         return result
 
-    # pylint: disable= too-many-arguments
-    def write_register(
+    def write_register(  # noqa: PLR0913
         self,
         base_register: int,
         value: int,

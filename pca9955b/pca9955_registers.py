@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Unlicense
 """
-`pca9955b_registers
+`pca9955b_registers`
 ================================================================================
 
 CircuitPython helper library for the NXP 16-Channel I�C-Bus Constant-Current LED Driver

@@ -125,7 +125,7 @@ Documentation
 
 Class Diagram for library
 
-.. figure:: /../pca9955bClasses.svg
+.. figure:: https://raw.githubusercontent.com/noelanderson/CircuitPython_PCA9955B/master/pca9955bClasses.svg
    :alt: Class Diagram
 
 API documentation for this library can be found on `Read the Docs <https://circuitpython-pca9955b.readthedocs.io/>`_.

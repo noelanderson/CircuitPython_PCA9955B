@@ -45,8 +45,108 @@ except ImportError:
 
 from adafruit_bus_device import i2c_device
 from digitalio import DigitalInOut, Direction, DriveMode
+from micropython import const
 
-from . import pca9955_registers as PCA9955REG
+from .pca9955b_groups import Groups
+
+# Register map & bit positions for PCA9955B
+
+PCA9955REG_MODE1 = const(0x00)  # R/W
+# ---------------------------------------------------------------#
+#    7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
+# -------+-------+-------+-------+-------+-------+-------+-------|
+#   AIF  |  AI1  |  AI0  | SLEEP |  SUB1 |  SUB2 |  SUB3 |ALLCALL|
+# ---------------------------------------------------------------#
+PCA9955REG_BIT_ALLCALL = const(0)  # R
+PCA9955REG_BIT_SUB3 = const(1)  # R/W
+PCA9955REG_BIT_SUB2 = const(2)  # R/W
+PCA9955REG_BIT_SUB1 = const(3)  # R/W
+PCA9955REG_BIT_SLEEP = const(4)  # R/W
+PCA9955REG_BIT_AI0 = const(5)  # R/W
+PCA9955REG_BIT_AI1 = const(6)  # R/W
+PCA9955REG_BIT_AIF = const(7)  # R/W
+
+PCA9955REG_MODE2 = const(0x01)  # R/W
+# ---------------------------------------------------------------#
+#    7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
+# -------+-------+-------+-------+-------+-------+-------+-------|
+#  OVERTP| ERROR | DMBLNK| CLRERR|  OCH  |EXP_EN |   -   |   -   |
+# ---------------------------------------------------------------#
+PCA9955REG_BIT_EXP_EN = const(2)  # R/W
+PCA9955REG_BIT_OCH = const(3)  # R/W
+PCA9955REG_BIT_CLRERR = const(4)  # W
+PCA9955REG_BIT_DMBLNK = const(5)  # R/W
+PCA9955REG_BIT_ERROR = const(6)  # R
+PCA9955REG_BIT_OVERTEMP = const(7)  # R
+
+PCA9955REG_LEDOUT0 = const(0x02)  # R/W
+# ---------------------------------------------------------------#
+#    7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
+# -------+-------+-------+-------+-------+-------+-------+-------|
+#       LED3     |      LED2     |      LED1     |      LEDO     | LEDOUT0
+# -------+-------+-------+-------+-------+-------+-------+-------|
+#       LED7     |      LED6     |      LED5     |      LED4     | LEDOUT1
+# -------+-------+-------+-------+-------+-------+-------+-------|
+#       LED11    |      LED10    |      LED9     |      LED8     | LEDOUT2
+# -------+-------+-------+-------+-------+-------+-------+-------|
+#       LED15    |      LED14    |      LED13    |      LED12    | LEDOUT3
+# ---------------------------------------------------------------#
+
+PCA9955REG_GRPPWM = const(0x06)  # R/W
+PCA9955REG_GRPFREQ = const(0x07)  # R/W
+
+PCA9955REG_PWM0 = const(0x08)  # R/W  (PWM1 - PWM15 repeats)
+
+PCA9955REG_IREF0 = const(0x18)  # R/W  (IREF1 - IREF15 repeats)
+
+PCA9955REG_GRAD_MODE_SEL0 = const(0x38)  # R/W
+PCA9955REG_GRAD_GRP_SEL0 = const(0x3A)  # R/W
+# ---------------------------------------------------------------#
+#    7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
+# -------+-------+-------+-------+-------+-------+-------+-------|
+#       LED3     |      LED2     |      LED1     |      LEDO     | GRAD_GRP_SEL0
+# -------+-------+-------+-------+-------+-------+-------+-------|
+#       LED7     |      LED6     |      LED5     |      LED4     | GRAD_GRP_SEL1
+# -------+-------+-------+-------+-------+-------+-------+-------|
+#       LED11    |      LED10    |      LED9     |      LED8     | GRAD_GRP_SEL2
+# -------+-------+-------+-------+-------+-------+-------+-------|
+#       LED15    |      LED14    |      LED13    |      LED12    | GRAD_GRP_SEL3
+# ---------------------------------------------------------------#
+
+PCA9955REG_OFFSET = const(0x3F)  # R/W
+# ---------------------------------------------------------------#
+#    7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
+# -------+-------+-------+-------+-------+-------+-------+-------|
+#                -               |        OUTPUT_DELAY           |
+# ---------------------------------------------------------------#
+PCA9955REG_BIT_OUTPUT_DELAY = const(0)  # R/W
+
+PCA9955REG_SUBADR1 = const(0x40)  # R/W
+PCA9955REG_SUBADR2 = const(0x41)  # R/W
+PCA9955REG_SUBADR3 = const(0x42)  # R/W
+PCA9955REG_ALLCALLADR = const(0x43)  # R/W
+# ---------------------------------------------------------------#
+#    7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
+# -------+-------+-------+-------+-------+-------+-------+-------|
+#                   I2C_BUS_SUBADDRESS                   |   -   |
+# ---------------------------------------------------------------#
+PCA9955REG_BIT_SUBADR = const(1)  # R/W
+
+PCA9955REG_PWMALL = const(0x44)  # R/W
+PCA9955REG_IREFALL = const(0x45)  # R/W
+PCA9955REG_EFLAG0 = const(0x46)  # R
+# ---------------------------------------------------------------#
+#    7   |   6   |   5   |   4   |   3   |   2   |   1   |   0   |
+# -------+-------+-------+-------+-------+-------+-------+-------|
+#       LED3     |      LED2     |      LED1     |      LEDO     | EFLAG0
+# -------+-------+-------+-------+-------+-------+-------+-------|
+#       LED7     |      LED6     |      LED5     |      LED4     | EFLAG1
+# -------+-------+-------+-------+-------+-------+-------+-------|
+#       LED11    |      LED10    |      LED9     |      LED8     | EFLAG2
+# -------+-------+-------+-------+-------+-------+-------+-------|
+#       LED15    |      LED14    |      LED13    |      LED12    | EFLAG3
+# ---------------------------------------------------------------#
+
 
 # Constants
 _PCA9955B_DEFAULT_I2C_ADDR = const(0x3F)  # AD10 AD1 & AD2 all FLT (Floating Inputs)
@@ -54,9 +154,7 @@ _PCA9955B_DEFAULT_I2C_ADDR = const(0x3F)  # AD10 AD1 & AD2 all FLT (Floating Inp
 # Bit Masks
 _1_BIT = const(0b00000001)
 _2_BITS = const(0b00000011)
-_3_BITS = const(0b00000111)
 _4_BITS = const(0b00001111)
-_6_BITS = const(0b00111111)
 _7_BITS = const(0b01111111)
 
 
@@ -93,52 +191,52 @@ class LedChannel:
     @property
     def brightness(self) -> int:
         """Channel brightness 0 - 255."""
-        return self._device.read_8(PCA9955REG.PWM0 + self._index)
+        return self._device.read_8(PCA9955REG_PWM0 + self._index)
 
     @brightness.setter
     def brightness(self, value: int) -> int:
         if not 0 <= value <= 255:
             raise ValueError("Value must be between 0 & 255")
-        self._device.write_8(PCA9955REG.PWM0 + self._index, value)
+        self._device.write_8(PCA9955REG_PWM0 + self._index, value)
 
     @property
     def gain(self) -> int:
         """Channel curent gain 0 - 255."""
-        return self._device.read_8(PCA9955REG.IREF0 + self._index)
+        return self._device.read_8(PCA9955REG_IREF0 + self._index)
 
     @gain.setter
     def gain(self, value: int) -> int:
         if not 0 <= value <= 255:
             raise ValueError("Value must be between 0 & 255")
-        self._device.write_8(PCA9955REG.IREF0 + self._index, value)
+        self._device.write_8(PCA9955REG_IREF0 + self._index, value)
 
     @property
     def output_state(self) -> int:
         """Channel Driver output state"""
 
-        return self._read_channel_config(PCA9955REG.LEDOUT0, self._index)
+        return self._read_channel_config(PCA9955REG_LEDOUT0, self._index)
 
     @output_state.setter
     def output_state(self, value: int) -> int:
         if not LedChannel.OFF <= value <= LedChannel.PWM_GRP:
             raise ValueError(f"Value must be between {LedChannel.OFF} & {LedChannel.PWM_GRP}")
-        self._write_channel_config(PCA9955REG.LEDOUT0, self._index, value)
+        self._write_channel_config(PCA9955REG_LEDOUT0, self._index, value)
 
     @property
     def led_error(self) -> int:
         """LED error state"""
-        return self._device.read_channel_config(PCA9955REG.EFLAG0, self._index)
+        return self._device.read_channel_config(PCA9955REG_EFLAG0, self._index)
 
     @property
     def group(self) -> int:
         """Gradation group."""
-        return self._read_channel_config(PCA9955REG.GRAD_GRP_SEL0, self._index)
+        return self._read_channel_config(PCA9955REG_GRAD_GRP_SEL0, self._index)
 
     @group.setter
     def group(self, value: int) -> int:
         if not 0 <= value <= 3:
             raise ValueError("Group must be between 0 and 3")
-        self._write_channel_config(PCA9955REG.GRAD_GRP_SEL0, self._index, value)
+        self._write_channel_config(PCA9955REG_GRAD_GRP_SEL0, self._index, value)
 
     @property
     def graduation_mode_select(self) -> bool:
@@ -147,7 +245,7 @@ class LedChannel:
         index = 0 if self._index < 7 else 1
         return bool(
             self._device.read_register(
-                PCA9955REG.GRAD_MODE_SEL0,
+                PCA9955REG_GRAD_MODE_SEL0,
                 offset=index,
                 mask=_1_BIT,
                 bit_offset=offset,
@@ -159,7 +257,7 @@ class LedChannel:
         offset = self._index % 8
         index = 0 if self._index < 7 else 1
         self._device.write_register(
-            PCA9955REG.GRAD_MODE_SEL0,
+            PCA9955REG_GRAD_MODE_SEL0,
             int(value),
             offset=index,
             mask=_1_BIT,
@@ -238,273 +336,6 @@ class LedChannels:
         return self._channels[index]
 
 
-class Group:
-    """A single PCA9955 Graduation Group.
-
-    :param PCA9955 device: The PCA9955 device object
-    :param int index: The index of the group
-    """
-
-    def __init__(self, device: "PCA9955", index: int):
-        self._device = device
-        self._index = index
-
-    @property
-    def ramp_up(self) -> bool:
-        """Ramp-up enable/disable."""
-        return self._device.read_register(
-            PCA9955REG.RAMP_RATE_GRP0,
-            offset=self._index,
-            mask=_1_BIT,
-            bit_offset=PCA9955REG.BIT_RAMP_UP_ENABLE,
-        )
-
-    @ramp_up.setter
-    def ramp_up(self, value: bool) -> bool:
-        self._device.write_register(
-            PCA9955REG.RAMP_RATE_GRP0,
-            value,
-            offset=self._index,
-            mask=_1_BIT,
-            bit_offset=PCA9955REG.BIT_RAMP_UP_ENABLE,
-        )
-
-    @property
-    def ramp_down(self) -> bool:
-        """Ramp-down enable/disable."""
-        return self._device.read_register(
-            PCA9955REG.RAMP_RATE_GRP0,
-            offset=self._index,
-            mask=_1_BIT,
-            bit_offset=PCA9955REG.BIT_RAMP_DOWN_ENABLE,
-        )
-
-    @ramp_down.setter
-    def ramp_down(self, value: bool) -> bool:
-        self._device.write_register(
-            PCA9955REG.RAMP_RATE_GRP0,
-            value,
-            offset=self._index,
-            mask=_1_BIT,
-            bit_offset=PCA9955REG.BIT_RAMP_DOWN_ENABLE,
-        )
-
-    @property
-    def ramp_rate(self) -> int:
-        """Ramp rate per step 0 - 64."""
-        return self._device.read_register(
-            PCA9955REG.RAMP_RATE_GRP0,
-            offset=self._index,
-            mask=_6_BITS,
-            bit_offset=PCA9955REG.BIT_RAMP_RATE,
-        )
-
-    @ramp_rate.setter
-    def ramp_rate(self, value: int) -> int:
-        if not 0 <= value <= 64:
-            raise ValueError("Value must be between 0 & 64")
-        self._device.write_register(
-            PCA9955REG.RAMP_RATE_GRP0,
-            value,
-            offset=self._index,
-            mask=_6_BITS,
-            bit_offset=PCA9955REG.BIT_RAMP_RATE,
-        )
-
-    @property
-    def cycle_time(self) -> int:
-        """Cycle time - 0 (0.5ms) or 1 (8ms)."""
-        return self._device.read_register(
-            PCA9955REG.STEP_TIME_GRP0,
-            offset=self._index,
-            mask=_1_BIT,
-            bit_offset=PCA9955REG.BIT_CYCLE_TIME,
-        )
-
-    @cycle_time.setter
-    def cycle_time(self, value: int) -> int:
-        if not 0 <= value <= 1:
-            raise ValueError("Valid values are 0 (0.5ms) or 1 (8ms)")
-        self._device.write_register(
-            PCA9955REG.STEP_TIME_GRP0,
-            value,
-            offset=self._index,
-            mask=_1_BIT,
-            bit_offset=PCA9955REG.BIT_CYCLE_TIME,
-        )
-
-    @property
-    def factor_per_step(self) -> int:
-        """Multiple factor per step 0 - 64."""
-        return self._device.read_register(
-            PCA9955REG.STEP_TIME_GRP0,
-            offset=self._index,
-            mask=_6_BITS,
-            bit_offset=PCA9955REG.BIT_FACTOR_PER_STEP,
-        )
-
-    @factor_per_step.setter
-    def factor_per_step(self, value: int) -> int:
-        if not 0 <= value <= 64:
-            raise ValueError("Value must be between 0 & 64")
-        self._device.write_register(
-            PCA9955REG.STEP_TIME_GRP0,
-            value,
-            offset=self._index,
-            mask=_6_BITS,
-            bit_offset=PCA9955REG.BIT_FACTOR_PER_STEP,
-        )
-
-    @property
-    def hold_on(self) -> bool:
-        """Hold on enable/disable."""
-        return self._device.read_register(
-            PCA9955REG.HOLD_CNTL_GRP0,
-            offset=self._index,
-            mask=_1_BIT,
-            bit_offset=PCA9955REG.BIT_HOLD_ON_ENABLE,
-        )
-
-    @hold_on.setter
-    def hold_on(self, value: bool) -> bool:
-        self._device.write_register(
-            PCA9955REG.HOLD_CNTL_GRP0,
-            value,
-            offset=self._index,
-            mask=_1_BIT,
-            bit_offset=PCA9955REG.BIT_HOLD_ON_ENABLE,
-        )
-
-    @property
-    def hold_off(self) -> bool:
-        """Hold off enable/disable."""
-        return self._device.read_register(
-            PCA9955REG.HOLD_CNTL_GRP0,
-            offset=self._index,
-            mask=_1_BIT,
-            bit_offset=PCA9955REG.BIT_HOLD_OFF_ENABLE,
-        )
-
-    @hold_off.setter
-    def hold_off(self, value: bool) -> bool:
-        self._device.write_register(
-            PCA9955REG.HOLD_CNTL_GRP0,
-            value,
-            offset=self._index,
-            mask=_1_BIT,
-            bit_offset=PCA9955REG.BIT_HOLD_OFF_ENABLE,
-        )
-
-    @property
-    def hold_on_time(self) -> int:
-        """Hold On time - 0 (0s), 1 (0.25s), 2 (0.5s), 3 (0.75s)
-        , 4 (1s), 5 (2s), 6 (4s), 7 (6s)."""
-        return self._device.read_register(
-            PCA9955REG.HOLD_CNTL_GRP0,
-            offset=self._index,
-            mask=_3_BITS,
-            bit_offset=PCA9955REG.BIT_HOLD_ON_TIME,
-        )
-
-    @hold_on_time.setter
-    def hold_on_time(self, value: int) -> int:
-        if not 0 <= value <= 7:
-            raise ValueError(
-                "Valid values are 0 (0s), 1 (0.25s), 2 (0.5s), 3 (0.75s)\
-                , 4 (1s), 5 (2s), 6 (4s), 7 (6s)"
-            )
-        self._device.write_register(
-            PCA9955REG.HOLD_CNTL_GRP0,
-            value,
-            offset=self._index,
-            mask=_3_BITS,
-            bit_offset=PCA9955REG.BIT_HOLD_ON_TIME,
-        )
-
-    @property
-    def hold_off_time(self) -> int:
-        """Hold On time  - 0 (0s), 1 (0.25s), 2 (0.5s), 3 (0.75s)\
-        , 4 (1s), 5 (2s), 6 (4s), 7 (6s)."""
-        return self._device.read_register(
-            PCA9955REG.HOLD_CNTL_GRP0,
-            offset=self._index,
-            mask=_3_BITS,
-            bit_offset=PCA9955REG.BIT_HOLD_OFF_TIME,
-        )
-
-    @hold_off_time.setter
-    def hold_off_time(self, value: int) -> int:
-        if not 0 <= value <= 7:
-            raise ValueError(
-                "Valid values are 0 (0s), 1 (0.25s), 2 (0.5s), 3 (0.75s)\
-                , 4 (1s), 5 (2s), 6 (4s), 7 (6s)"
-            )
-        self._device.write_register(
-            PCA9955REG.HOLD_CNTL_GRP0,
-            value,
-            offset=self._index,
-            mask=_3_BITS,
-            bit_offset=PCA9955REG.BIT_HOLD_OFF_TIME,
-        )
-
-    @property
-    def gain(self) -> int:
-        """Group output current gain (0-255)."""
-        return self._device.read_register(PCA9955REG.IREF_GRP0, self._index)
-
-    @gain.setter
-    def gain(self, value: int) -> int:
-        """Set group output current gain to specified value. Should be 0-255."""
-        if not 0 <= value <= 255:
-            raise ValueError("Valid values are  0-255")
-        self._device.write_register(PCA9955REG.IREF_GRP0, value, offset=self._index)
-
-    @property
-    def graduation_mode(self) -> bool:
-        """Graduation mode. 0 = Single Shot, 1 = Continuous."""
-        bit_offset = self._index << 2
-        return bool(
-            self._device.read_register(PCA9955REG.GRAD_CNTL, mask=_1_BIT, bit_offset=bit_offset)
-        )
-
-    @graduation_mode.setter
-    def graduation_mode(self, value: bool) -> None:
-        """Set graduation mode. 0 = Single Shot, 1 = Continuous."""
-        bit_offset = self._index << 2
-        self._device.write_register(
-            PCA9955REG.GRAD_CNTL, int(value), mask=_1_BIT, bit_offset=bit_offset
-        )
-
-    def graduation_start(self) -> None:
-        """Start defined Group Graduation running."""
-        bit_offset = (self._index << 2) + 1
-        self._device.write_register(PCA9955REG.GRAD_CNTL, 0x01, mask=_1_BIT, bit_offset=bit_offset)
-
-    def graduation_stop(self) -> None:
-        """Stop Group Graduation."""
-        bit_offset = (self._index << 2) + 1
-        self._device.write_register(PCA9955REG.GRAD_CNTL, 0x00, mask=_1_BIT, bit_offset=bit_offset)
-
-
-class Groups:
-    """Lazily creates and caches Group objects as needed. Treat it like a sequence.
-
-    :param PCA9955 device: The PCA9955 device object
-    """
-
-    def __init__(self, device: "PCA9955") -> None:
-        self._device = device
-        self.groups = [None] * len(self)
-
-    def __len__(self) -> int:
-        return 4
-
-    def __getitem__(self, index: int) -> Group:
-        if not self.groups[index]:
-            self.groups[index] = Group(self._device, index)
-        return self.groups[index]
-
-
 class I2CSubAddress:
     """A single PCA9955 I2C Sub Address.
 
@@ -513,7 +344,7 @@ class I2CSubAddress:
     """
 
     # I2C Sub Address constants
-    SUBADR1 = const(0)  # offset from PCA9955REG.SUBADR1
+    SUBADR1 = const(0)  # offset from PCA9955REG_SUBADR1
     SUBADR2 = const(1)
     SUBADR3 = const(2)
     ALLCALLADR = const(3)
@@ -527,10 +358,10 @@ class I2CSubAddress:
         """Bus Address of the I2C Sub Address."""
         return int(
             self._device.read_register(
-                PCA9955REG.SUBADR1,
+                PCA9955REG_SUBADR1,
                 offset=self._index,
                 mask=_7_BITS,
-                bit_offset=PCA9955REG.BIT_SUBADR,
+                bit_offset=PCA9955REG_BIT_SUBADR,
             )
         )
 
@@ -538,11 +369,11 @@ class I2CSubAddress:
     def address(self, value: int) -> int:
         """Set the Bus address of the I2C Sub Address."""
         self._device.write_register(
-            PCA9955REG.SUBADR1,
+            PCA9955REG_SUBADR1,
             value,
             offset=self._index,
             mask=_7_BITS,
-            bit_offset=PCA9955REG.BIT_SUBADR,
+            bit_offset=PCA9955REG_BIT_SUBADR,
         )
 
     @property
@@ -550,7 +381,7 @@ class I2CSubAddress:
         """I2C sub address enabled."""
         bit_offset = I2CSubAddress.ALLCALLADR - self._index  # Bits in reverse order to registers
         return bool(
-            self._device.read_register(PCA9955REG.MODE1, mask=_1_BIT, bit_offset=bit_offset)
+            self._device.read_register(PCA9955REG_MODE1, mask=_1_BIT, bit_offset=bit_offset)
         )
 
     @enable.setter
@@ -558,7 +389,7 @@ class I2CSubAddress:
         """Enable I2C sub address."""
         bit_offset = I2CSubAddress.ALLCALLADR - self._index  # Bits in reverse order to registers
         self._device.write_register(
-            PCA9955REG.MODE1, int(value), mask=_1_BIT, bit_offset=bit_offset
+            PCA9955REG_MODE1, int(value), mask=_1_BIT, bit_offset=bit_offset
         )
 
 
@@ -675,7 +506,7 @@ class PCA9955:  # noqa PLR0904
 
     @brightness.setter
     def brightness(self, value: int) -> None:
-        self.write_8(PCA9955REG.PWMALL, value)
+        self.write_8(PCA9955REG_PWMALL, value)
 
     @property
     def gain(self) -> NoReturn:
@@ -684,13 +515,13 @@ class PCA9955:  # noqa PLR0904
 
     @gain.setter
     def gain(self, value: int) -> int:
-        self.write_8(PCA9955REG.IREFALL, value)
+        self.write_8(PCA9955REG_IREFALL, value)
 
     @property
     def over_temp(self) -> bool:
         """True indicates over temperature condition."""
         return bool(
-            self.read_register(PCA9955REG.MODE2, mask=_1_BIT, bit_offset=PCA9955REG.BIT_OVERTEMP)
+            self.read_register(PCA9955REG_MODE2, mask=_1_BIT, bit_offset=PCA9955REG_BIT_OVERTEMP)
         )
 
     @over_temp.setter
@@ -701,7 +532,7 @@ class PCA9955:  # noqa PLR0904
     def errors_exist(self) -> bool:
         """True indicates errors exist."""
         return bool(
-            self.read_register(PCA9955REG.MODE2, mask=_1_BIT, bit_offset=PCA9955REG.BIT_ERROR)
+            self.read_register(PCA9955REG_MODE2, mask=_1_BIT, bit_offset=PCA9955REG_BIT_ERROR)
         )
 
     @errors_exist.setter
@@ -712,18 +543,18 @@ class PCA9955:  # noqa PLR0904
     def low_power_mode(self) -> bool:
         """1 = low power mode, 0 = normal mode"""
         return bool(
-            self.read_register(PCA9955REG.MODE1, mask=_1_BIT, bit_offset=PCA9955REG.BIT_SLEEP)
+            self.read_register(PCA9955REG_MODE1, mask=_1_BIT, bit_offset=PCA9955REG_BIT_SLEEP)
         )
 
     @low_power_mode.setter
     def low_power_mode(self, value: bool) -> None:
-        self.write_register(PCA9955REG.MODE1, value, mask=_1_BIT, bit_offset=PCA9955REG.BIT_SLEEP)
+        self.write_register(PCA9955REG_MODE1, value, mask=_1_BIT, bit_offset=PCA9955REG_BIT_SLEEP)
 
     @property
     def auto_increment_flag(self) -> bool:
         """1 = auto increment, 0 = normal mode"""
         return bool(
-            self.read_register(PCA9955REG.MODE1, mask=_1_BIT, bit_offset=PCA9955REG.BIT_AIF)
+            self.read_register(PCA9955REG_MODE1, mask=_1_BIT, bit_offset=PCA9955REG_BIT_AIF)
         )
 
     @auto_increment_flag.setter
@@ -733,26 +564,26 @@ class PCA9955:  # noqa PLR0904
     @property
     def auto_increment_mode(self) -> int:
         """Auto increment mode 0 - 3"""
-        return self.read_register(PCA9955REG.MODE1, mask=_2_BITS, bit_offset=PCA9955REG.BIT_AI0)
+        return self.read_register(PCA9955REG_MODE1, mask=_2_BITS, bit_offset=PCA9955REG_BIT_AI0)
 
     @auto_increment_mode.setter
     def auto_increment_mode(self, value: int) -> None:
         if not 0 <= value <= 3:
             raise ValueError("Valid values are 0 - 3")
-        self.write_register(PCA9955REG.MODE1, value, mask=_2_BITS, bit_offset=PCA9955REG.BIT_AI0)
+        self.write_register(PCA9955REG_MODE1, value, mask=_2_BITS, bit_offset=PCA9955REG_BIT_AI0)
 
     @property
     def exponential_graduation(self) -> bool:
         """1 = exponential adjustment for gradation control,
         0 = linear adjustment for gradation control (default)"""
         return bool(
-            self.read_register(PCA9955REG.MODE2, mask=_1_BIT, bit_offset=PCA9955REG.BIT_EXP_EN)
+            self.read_register(PCA9955REG_MODE2, mask=_1_BIT, bit_offset=PCA9955REG_BIT_EXP_EN)
         )
 
     @exponential_graduation.setter
     def exponential_graduation(self, value: bool) -> None:
         self.write_register(
-            PCA9955REG.MODE2, int(value), mask=_1_BIT, bit_offset=PCA9955REG.BIT_EXP_EN
+            PCA9955REG_MODE2, int(value), mask=_1_BIT, bit_offset=PCA9955REG_BIT_EXP_EN
         )
 
     @property
@@ -760,43 +591,43 @@ class PCA9955:  # noqa PLR0904
         """1 = group control - blinking,
         0 =  group control - dimming (default)"""
         return bool(
-            self.read_register(PCA9955REG.MODE2, mask=_1_BIT, bit_offset=PCA9955REG.BIT_DMBLNK)
+            self.read_register(PCA9955REG_MODE2, mask=_1_BIT, bit_offset=PCA9955REG_BIT_DMBLNK)
         )
 
     @group_blinking.setter
     def group_blinking(self, value: bool) -> None:
         self.write_register(
-            PCA9955REG.MODE2, int(value), mask=_1_BIT, bit_offset=PCA9955REG.BIT_DMBLNK
+            PCA9955REG_MODE2, int(value), mask=_1_BIT, bit_offset=PCA9955REG_BIT_DMBLNK
         )
 
     @property
     def group_pwm(self) -> int:
         """Global brightness control when group_blinking = 0)"""
-        return self.read_8(PCA9955REG.GRPPWM)
+        return self.read_8(PCA9955REG_GRPPWM)
 
     @group_pwm.setter
     def group_pwm(self, value: int) -> None:
-        self.write_8(PCA9955REG.GRPPWM, value)
+        self.write_8(PCA9955REG_GRPPWM, value)
 
     @property
     def group_frequency(self) -> int:
         """Global blinking frequency control when group_blinking = 1)"""
-        return self.read_8(PCA9955REG.GRPFREQ)
+        return self.read_8(PCA9955REG_GRPFREQ)
 
     @group_frequency.setter
     def group_frequency(self, value: int) -> None:
         """Global blinking frequency control when group_blinking = 1)"""
-        self.write_8(PCA9955REG.GRPFREQ, value)
+        self.write_8(PCA9955REG_GRPFREQ, value)
 
     def clear_errors(self) -> None:
         """Clear errors"""
-        self.write_register(PCA9955REG.MODE2, 0x01, mask=_1_BIT, bit_offset=PCA9955REG.BIT_CLRERR)
+        self.write_register(PCA9955REG_MODE2, 0x01, mask=_1_BIT, bit_offset=PCA9955REG_BIT_CLRERR)
 
     @property
     def output_delay_offset(self) -> int:
         """Output delay offset"""
         return self.read_register(
-            PCA9955REG.OFFSET, mask=_4_BITS, bit_offset=PCA9955REG.BIT_OUTPUT_DELAY
+            PCA9955REG_OFFSET, mask=_4_BITS, bit_offset=PCA9955REG_BIT_OUTPUT_DELAY
         )
 
     @output_delay_offset.setter
@@ -806,10 +637,10 @@ class PCA9955:  # noqa PLR0904
                 f"Value must be one of {0x00:00x}, {0x01:02x}, {0x02:02x}, {0x03:02x} or{0x0F:02x}"
             )
         self.write_register(
-            PCA9955REG.OFFSET,
+            PCA9955REG_OFFSET,
             value,
             mask=_4_BITS,
-            bit_offset=PCA9955REG.BIT_OUTPUT_DELAY,
+            bit_offset=PCA9955REG_BIT_OUTPUT_DELAY,
         )
 
     def read_register(

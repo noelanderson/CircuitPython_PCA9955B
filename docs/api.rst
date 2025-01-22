@@ -9,3 +9,6 @@ API Reference
 
 .. automodule:: pca9955b.pca9955b
     :members:
+
+.. automodule:: pca9955b.pca9955b_groups
+    :members:

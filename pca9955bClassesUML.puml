@@ -1,4 +1,7 @@
 @startuml pca9955b
+' SPDX-FileCopyrightText: Copyright (c) 2024 Noel Anderson
+' SPDX-License-Identifier: MIT
+
 class PCA9955 {
     +PCA9955(i2c: I2C, address: int, oe_pin: Optional[microcontroller.Pin], reset_pin: Optional[microcontroller.Pin])
     ..

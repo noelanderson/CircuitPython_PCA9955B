@@ -159,7 +159,8 @@ _7_BITS = const(0b01111111)
 
 
 class LedChannel:
-    """A class representing a single PCA9955 channel.
+    """
+    A class representing a single PCA9955 channel.
 
     :param PCA9955 device: The PCA9955 device object.
     :param int index: The index of the channel.
@@ -268,12 +269,11 @@ class LedChannel:
         """
         Reads the configuration of a specific channel from the device.
 
-        Args:
-            base_register (int): The base register address to read from.
-            offset (int): The offset to determine the specific channel configuration.
+        :param int base_register: The base register address to read from.
+        :param int offset: The offset to determine the specific channel configuration.
 
-        Returns:
-            int: The configuration value of the specified channel.
+        :returns: The configuration value of the specified channel.
+        :rtype: int
 
         This function calculates the appropriate register and mask to read the
         configuration of a specific channel. It then reads the register value,
@@ -291,18 +291,17 @@ class LedChannel:
         return result
 
     def _write_channel_config(self, base_register: int, offset: int, value: int) -> None:
-        """Write channel configuration register.
+        """
+        Write channel configuration register.
 
         This method writes a value to a specific channel configuration register
         by calculating the appropriate register address and bit offset.
 
-        Args:
-            base_register (int): The base address of the register.
-            offset (int): The offset to determine the specific channel.
-            value (int): The value to write to the register.
+        :param int base_register: The base address of the register.
+        :param int offset: The offset to determine the specific channel.
+        :param int value: The value to write to the register.
 
-        Returns:
-            None
+        :returns: None
         """
         register = base_register + (offset >> 2)
         offset = (offset % 4) << 1
@@ -355,7 +354,7 @@ class I2CSubAddress:
 
     @property
     def address(self) -> int:
-        """Bus Address of the I2C Sub Address."""
+        """Bus Address for the I2C Sub Address."""
         return int(
             self._device.read_register(
                 PCA9955REG_SUBADR1,
@@ -413,7 +412,8 @@ class I2CSubAddresses:
 
 
 class PCA9955:  # noqa PLR0904
-    """A class representing a PCA9955 device.
+    """
+    A class representing a PCA9955 device.
 
     This class provides an interface to control the PCA9955 LED driver via I2C.
     It allows for setting various properties such as brightness, gain, and
@@ -421,9 +421,9 @@ class PCA9955:  # noqa PLR0904
     It also provides methods to read and write to the device's registers.
 
     Attributes:
-        channels (LedChannels): An instance of the LedChannels class to control
-        individual LED channels.
-        groups (Groups): An instance of the Groups class to control groups of LEDs.
+        channels (LedChannels): An collection of LedChannels objects.
+        groups (Groups): A collection of Group Objects.
+        subaddresses (I2CSubAddresses): A collection of I2CSubAddress objects.
     """
 
     def __init__(

@@ -112,7 +112,7 @@ PCA9955 "1" o--> "1 "  Groups
 Groups "1" *--> "4 " Group
 PCA9955 "1" o--> "1 "  I2CSubAddresses
 I2CSubAddresses "1" *--> "4 " I2CSubAddress
-Group "1" -->  "4" LedChannel
+Group "1" -->  "4" LedChannel  #green;line.dashed
 
 LedChannel -- ErrorCodes
 LedChannel -- OutputState

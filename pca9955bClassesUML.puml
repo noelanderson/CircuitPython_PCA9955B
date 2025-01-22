@@ -1,0 +1,119 @@
+@startuml pca9955b
+class PCA9955 {
+    +PCA9955(i2c: I2C, address: int, oe_pin: Optional[microcontroller.Pin], reset_pin: Optional[microcontroller.Pin])
+    ..
+    +{field} channels: LedChannels
+    +{field} groups: Groups
+    +{field} subaddresses: I2CSubAddresses
+    .. core properties..
+    +{field} output_enable: bool
+    +{field} brightness: int
+    +{field} gain: int
+    ..
+    +{field} exponential_graduation: bool
+    +{field} group_blinking: bool
+    +{field} group_pwm: int
+    +{field} group_frequency: int
+    ..
+    +{field} over_temp: bool (read only)
+    +{field} errors_exist: bool (read only)
+    +{field} low_power_mode: bool
+    +{field} auto_increment_flag: bool
+    +{field} auto_increment_mode: int
+    +{field} output_delay_offset: int
+    ..
+    +{method} clear_errors(): void
+    +{method} deinit(): void
+    +{method} reset(): void
+}
+
+class LedChannels {
+    +{method} __len__(): int
+    +{method} __getitem__(index: int): LedChannel
+}
+
+class Groups {
+    +{method} __len__(): int
+    +{method} __getitem__(index: int): Group
+}
+
+
+class I2CSubAddresses {
+    +{method} __len__(): int
+    +{method} __getitem__(index: int): I2CSubAddress
+}
+
+
+'force layout
+LedChannels-[hidden]--> dummy
+hide dummy
+
+class LedChannel {
+    +{field} brightness: int
+    +{field} gain: int
+    +{field} output_state: int
+    +{field} led_error: int
+    +{field} groupId: int
+    +{field} graduation_mode_select: bool
+}
+note left: Basic led control
+
+class Group {
+    +{field} gain: int
+    +{field} graduation_mode: bool
+    +{field} ramp_up: bool
+    +{field} ramp_down: bool
+    +{field} ramp_rate: int
+    +{field} cycle_time: int
+    +{field} factor_per_step: int
+    +{field} hold_on: bool
+    +{field} hold_on_time: int
+    +{field} hold_off: bool
+    +{field} hold_off_time: int
+    +{method} graduation_start(): void
+    +{method} graduation_stop(): void
+}
+note left: Complex automatic\ngroup actions
+
+
+class I2CSubAddress {
+    +{field} address: int
+    +{field} enable: bool
+}
+note right: Support for multiple\ndevices on same bus
+
+ enum ErrorCodes {
+     NONE: No error
+     SHORT_CIRCUI: Short circuit
+     OPEN_CIRCUIT: Open circuit
+}
+
+ enum OutputState{
+     OFF: Channel off
+     FULL_ON: Channel full on
+     PWM: Channel PWM
+     PWM_GRP: Channel PWM group
+}
+
+ enum SubAddresses{
+    SUBADR1
+    SUBADR2
+    SUBADR3
+    ALLCALLADR
+}
+
+
+PCA9955 "1" o--> "1 " LedChannels
+LedChannels "1" *--> "16 " LedChannel
+PCA9955 "1" o--> "1 "  Groups
+Groups "1" *--> "4 " Group
+PCA9955 "1" o--> "1 "  I2CSubAddresses
+I2CSubAddresses "1" *--> "4 " I2CSubAddress
+Group "1" -->  "4" LedChannel
+
+LedChannel -- ErrorCodes
+LedChannel -- OutputState
+I2CSubAddress -- SubAddresses
+
+hide empty members
+@enduml

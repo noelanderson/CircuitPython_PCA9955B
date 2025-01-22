@@ -122,10 +122,13 @@ Usage Example
 
 Documentation
 =============
+.. figure:: pca9955bClasses.svg
+   :alt: Class Diagram
+
+   Class Diagram for driver
+
 API documentation for this library can be found on `Read the Docs <https://circuitpython-pca9955b.readthedocs.io/>`_.
 
-For information on building library documentation, please check out
-`this guide <https://learn.adafruit.com/creating-and-sharing-a-circuitpython-library/sharing-our-docs-on-readthedocs#sphinx-5-1>`_.
 
 Contributing
 ============

@@ -164,26 +164,23 @@ class LedChannel:
 
     :param PCA9955 device: The PCA9955 device object.
     :param int index: The index of the channel.
-
-    Attributes:
-        NONE (int): Constant for no error.
-        SHORT_CIRCUIT (int): Constant for short circuit error.
-        OPEN_CIRCUIT (int): Constant for open circuit error.
-        OFF (int): Constant for channel off state.
-        FULL_ON (int): Constant for channel full on state.
-        PWM (int): Constant for channel PWM state.
-        PWM_GRP (int): Constant for channel PWM group state.
     """
 
-    # User-facing constants:
-    NONE = const(0x00)
-    SHORT_CIRCUIT = const(0x01)
-    OPEN_CIRCUIT = const(0x02)
+    E_NONE = const(0x00)
+    """Constant for no error."""
+    E_SHORT_CIRCUIT = const(0x01)
+    """Constant for short circuit error."""
+    E_OPEN_CIRCUIT = const(0x02)
+    """Constant for open circuit error. """
 
     OFF = const(0x00)
-    FULL_ON = const(0x01)
+    """Constant for channel off state."""
+    ON = const(0x01)
+    """Constant for channel full on state."""
     PWM = const(0x02)
+    """Constant for channel PWM state."""
     PWM_GRP = const(0x03)
+    """Constant for channel PWM group state."""
 
     def __init__(self, device: "PCA9955", index: int):
         self._device = device
@@ -214,7 +211,6 @@ class LedChannel:
     @property
     def output_state(self) -> int:
         """Channel Driver output state"""
-
         return self._read_channel_config(_REG_LEDOUT0, self._index)
 
     @output_state.setter
@@ -226,7 +222,7 @@ class LedChannel:
     @property
     def led_error(self) -> int:
         """LED error state"""
-        return self._device.read_channel_config(_REG_EFLAG0, self._index)
+        return self._read_channel_config(_REG_EFLAG0, self._index)
 
     @property
     def group(self) -> int:
@@ -335,18 +331,21 @@ class LedChannels:
         return self._channels[index]
 
 
-class I2CSubAddress:
+class SubAddress:
     """A single PCA9955 I2C Sub Address.
 
     :param PCA9955 device: The PCA9955 device object
     :param int index: The index of the address
     """
 
-    # I2C Sub Address constants
-    SUBADR1 = const(0)  # offset from _REG_SUBADR1
+    SUBADR1 = const(0)
+    """Constant for SUBADR1."""
     SUBADR2 = const(1)
+    """Constant for SUBADR2."""
     SUBADR3 = const(2)
+    """Constant for SUBADR3."""
     ALLCALLADR = const(3)
+    """Constant for ALLCALLADR."""
 
     def __init__(self, device: "PCA9955", index: int):
         self._device = device
@@ -378,17 +377,17 @@ class I2CSubAddress:
     @property
     def enable(self) -> bool:
         """I2C sub address enabled."""
-        bit_offset = I2CSubAddress.ALLCALLADR - self._index  # Bits in reverse order to registers
+        bit_offset = SubAddress.ALLCALLADR - self._index  # Bits in reverse order to registers
         return bool(self._device.read_register(_REG_MODE1, mask=_1_BIT, bit_offset=bit_offset))
 
     @enable.setter
     def enable(self, value: bool) -> None:
         """Enable I2C sub address."""
-        bit_offset = I2CSubAddress.ALLCALLADR - self._index  # Bits in reverse order to registers
+        bit_offset = SubAddress.ALLCALLADR - self._index  # Bits in reverse order to registers
         self._device.write_register(_REG_MODE1, int(value), mask=_1_BIT, bit_offset=bit_offset)
 
 
-class I2CSubAddresses:
+class SubAddresses:
     """Lazily creates and caches I2CSubAddress objects as needed. Treat it like a sequence.
 
     :param PCA9955 device: The PCA9955 device object
@@ -401,9 +400,9 @@ class I2CSubAddresses:
     def __len__(self) -> int:
         return 4
 
-    def __getitem__(self, index: int) -> I2CSubAddress:
+    def __getitem__(self, index: int) -> SubAddress:
         if not self.i2c_addresses[index]:
-            self.i2c_addresses[index] = I2CSubAddress(self._device, index)
+            self.i2c_addresses[index] = SubAddress(self._device, index)
         return self.i2c_addresses[index]
 
 
@@ -449,7 +448,7 @@ class PCA9955:  # noqa PLR0904
         self._device = i2c_device.I2CDevice(i2c, address)
         self.channels = LedChannels(self)
         self.groups = Groups(self)
-        self.subaddresses = I2CSubAddresses(self)
+        self.subaddresses = SubAddresses(self)
         self._oe = None
         if oe_pin is not None:
             self._oe = DigitalInOut(oe_pin)
@@ -628,16 +627,17 @@ class PCA9955:  # noqa PLR0904
         mask: int = 0xFF,
         bit_offset: int = 0,
     ) -> int:
-        """Read a set of bits from a register.
+        """
+        Read a set of bits from a register.
 
-        Args:
-            base_register (int): The base register address.
-            offset (int, optional): The offset to add to the base register. Defaults to 0.
-            mask (int, optional): The bitmask to apply to the register value. Defaults to 0xFF.
-            bit_offset (int, optional): The bit offset to apply to the mask. Defaults to 0.
+        :param int base_register: The base register address.
+        :param int offset: The offset to add to the base register. Defaults to 0.
+        :param int mask: The bitmask to apply to the register value. Defaults to 0xFF.
+        :param int bit_offset: The bit offset to apply to the mask. Defaults to 0.
 
-        Returns:
-            int: The value read from the register after applying the mask and bit offset.
+        :returns: The value read from the register after applying the mask and bit offset.
+        :rtype: int
+        :meta private:
         """
         register = base_register + offset
         mask = mask << bit_offset
@@ -657,17 +657,17 @@ class PCA9955:  # noqa PLR0904
         mask: int = 0xFF,
         bit_offset: int = 0,
     ) -> None:
-        """Write a set of bits to a register.
+        """
+        Write a set of bits to a register.
 
-        Args:
-            base_register (int): The base address of the register.
-            value (int): The value to write to the register.
-            offset (int, optional): The offset to add to the base register.Defaults to 0.
-            mask (int, optional): The mask to apply to the value. Defaults to 0xFF.
-            bit_offset (int, optional): The bit offset to apply to the value. Defaults to 0.
+        :param int base_register: The base address of the register.
+        :param int value: The value to write to the register.
+        :param int offset: The offset to add to the base register. Defaults to 0.
+        :param int mask: The mask to apply to the value. Defaults to 0xFF.
+        :param int bit_offset: The bit offset to apply to the value. Defaults to 0.
 
-        Returns:
-            None
+        :returns: None
+        :meta private:
         """
         register = base_register + offset
         mask = mask << bit_offset
@@ -681,7 +681,11 @@ class PCA9955:  # noqa PLR0904
         # )
 
     def read_8(self, address: int) -> int:
-        """Read and return a byte from the specified 8-bit register address."""
+        """
+        Read and return a byte from the specified 8-bit register address.
+
+        :meta private:
+        """
         result = bytearray(1)
         with self._device as i2c:
             i2c.write(bytes([address]))
@@ -690,7 +694,11 @@ class PCA9955:  # noqa PLR0904
         return result[0]
 
     def write_8(self, address: int, value: int) -> None:
-        """Write a byte to the specified 8-bit register address."""
+        """
+        Write a byte to the specified 8-bit register address.
+
+        :meta private:
+        """
         result = bytearray(1)
         with self._device as i2c:
             i2c.write(bytes([address, value]))

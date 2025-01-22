@@ -122,10 +122,11 @@ Usage Example
 
 Documentation
 =============
+
+   Class Diagram for library
+
 .. figure:: pca9955bClasses.svg
    :alt: Class Diagram
-
-   Class Diagram for driver
 
 API documentation for this library can be found on `Read the Docs <https://circuitpython-pca9955b.readthedocs.io/>`_.
 

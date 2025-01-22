@@ -123,7 +123,7 @@ Usage Example
 Documentation
 =============
 
-   Class Diagram for library
+Class Diagram for library
 
 .. figure:: pca9955bClasses.svg
    :alt: Class Diagram

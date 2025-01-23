@@ -109,12 +109,12 @@ Usage Example
     ledDriver.gain = 0xFF
     ledDriver.brightness = 0x7F  # 50% brightness
 
-    ledDriver.channels[0].output_state = LedChannel.ON
+    ledDriver.channels[0].state = LedChannel.ON
     time.sleep(5)
-    ledDriver.channels[0].output_state = LedChannel.OFF
+    ledDriver.channels[0].state = LedChannel.OFF
     time.sleep(5)
 
-    ledDriver.channels[0].output_state = LedChannel.PWM
+    ledDriver.channels[0].state = LedChannel.PWM
     for i in range(255):
         ledDriver.channels[0].brightness = i
         time.sleep(0.02)

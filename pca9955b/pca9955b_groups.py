@@ -33,6 +33,11 @@ __repo__ = "https://github.com/NoelAnderson/CircuitPython_PCA9955B.git"
 
 from micropython import const
 
+try:
+    from typing import NoReturn
+except ImportError:
+    pass
+
 from . import pca9955b as PCA9955
 
 # Register map & bit positions for Gropup functions of PCA9955B
@@ -94,6 +99,15 @@ class Group:
         self._index = index
 
     @property
+    def id(self) -> int:
+        """Group Id. Read Only"""
+        return self._index
+
+    @id.setter
+    def id(self, value: int) -> NoReturn:  # noqa PLR6301
+        raise AttributeError("Id is read-only")
+
+    @property
     def ramp_up(self) -> bool:
         """Ramp-up enable/disable."""
         return self._device.read_register(
@@ -135,7 +149,7 @@ class Group:
 
     @property
     def ramp_rate(self) -> int:
-        """Ramp rate per step 0 - 64."""
+        """Ramp rate per step, 0 - 64."""
         return self._device.read_register(
             _REG_RAMP_RATE_GRP0,
             offset=self._index,

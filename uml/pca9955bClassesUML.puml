@@ -1,29 +1,31 @@
-@startuml pca9955b
 ' SPDX-FileCopyrightText: Copyright (c) 2024 Noel Anderson
 ' SPDX-License-Identifier: MIT
+
+@startuml pca9955b
 
 class PCA9955 {
     +PCA9955(i2c: I2C, address: int, oe_pin: Optional[microcontroller.Pin], reset_pin: Optional[microcontroller.Pin])
     ..
     +{field} channels: LedChannels
     +{field} groups: Groups
-    +{field} subaddresses: I2CSubAddresses
+    +{field} subaddresses: SubAddresses
     .. core properties..
     +{field} output_enable: bool
     +{field} brightness: int
     +{field} gain: int
-    ..
+    .. global controls..
     +{field} exponential_graduation: bool
-    +{field} group_blinking: bool
-    +{field} group_pwm: int
-    +{field} group_frequency: int
-    ..
-    +{field} over_temp: bool (read only)
-    +{field} errors_exist: bool (read only)
+    +{field} blinking: bool
+    +{field} pwm: int
+    +{field} frequency: int
+    +{field} output_delay: int
+    .. low level control ..
     +{field} low_power_mode: bool
     +{field} auto_increment_flag: bool
     +{field} auto_increment_mode: int
-    +{field} output_delay_offset: int
+    .. error management ..
+    +{field} over_temp: bool (read only)
+    +{field} errors_exist: bool (read only)
     ..
     +{method} clear_errors(): void
     +{method} deinit(): void
@@ -41,7 +43,7 @@ class Groups {
 }
 
 
-class I2CSubAddresses {
+class SubAddresses {
     +{method} __len__(): int
     +{method} __getitem__(index: int): I2CSubAddress
 }
@@ -54,10 +56,10 @@ hide dummy
 class LedChannel {
     +{field} brightness: int
     +{field} gain: int
-    +{field} output_state: int
-    +{field} led_error: int
+    +{field} state: int
+    +{field} error: int
     +{field} groupId: int
-    +{field} graduation_mode_select: bool
+    +{field} graduation_mode: bool
 }
 note left: Basic led control
 
@@ -79,26 +81,26 @@ class Group {
 note left: Complex automatic\ngroup actions
 
 
-class I2CSubAddress {
+class SubAddress {
     +{field} address: int
     +{field} enable: bool
 }
 note right: Support for multiple\ndevices on same bus
 
  enum ErrorCodes {
-     NONE: No error
-     SHORT_CIRCUI: Short circuit
-     OPEN_CIRCUIT: Open circuit
+     E_NONE: No error
+     E_SHORT_CIRCUI: Short circuit
+     E_OPEN_CIRCUIT: Open circuit
 }
 
  enum OutputState{
      OFF: Channel off
-     FULL_ON: Channel full on
+     ON: Channel full on
      PWM: Channel PWM
      PWM_GRP: Channel PWM group
 }
 
- enum SubAddresses{
+ enum SubAddressType{
     SUBADR1
     SUBADR2
     SUBADR3
@@ -110,13 +112,13 @@ PCA9955 "1" o--> "1 " LedChannels
 LedChannels "1" *--> "16 " LedChannel
 PCA9955 "1" o--> "1 "  Groups
 Groups "1" *--> "4 " Group
-PCA9955 "1" o--> "1 "  I2CSubAddresses
-I2CSubAddresses "1" *--> "4 " I2CSubAddress
+PCA9955 "1" o--> "1 "  SubAddresses
+SubAddresses "1" *--> "4 " SubAddress
 Group "1" -->  "4" LedChannel  #green;line.dashed
 
 LedChannel -- ErrorCodes
 LedChannel -- OutputState
-I2CSubAddress -- SubAddresses
+SubAddress -- SubAddressType
 
 hide empty members
 @enduml

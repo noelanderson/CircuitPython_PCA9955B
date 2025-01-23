@@ -209,34 +209,38 @@ class LedChannel:
         self._device.write_8(_REG_IREF0 + self._index, value)
 
     @property
-    def output_state(self) -> int:
+    def state(self) -> int:
         """Channel Driver output state"""
         return self._read_channel_config(_REG_LEDOUT0, self._index)
 
-    @output_state.setter
-    def output_state(self, value: int) -> int:
+    @state.setter
+    def state(self, value: int) -> int:
         if not LedChannel.OFF <= value <= LedChannel.PWM_GRP:
             raise ValueError(f"Value must be between {LedChannel.OFF} & {LedChannel.PWM_GRP}")
         self._write_channel_config(_REG_LEDOUT0, self._index, value)
 
     @property
-    def led_error(self) -> int:
-        """LED error state"""
+    def error(self) -> int:
+        """LED error state. Read Only"""
         return self._read_channel_config(_REG_EFLAG0, self._index)
 
+    @error.setter
+    def error(self) -> NoReturn:  # noqa PLR6301
+        raise AttributeError("Led Error is read-only")
+
     @property
-    def group(self) -> int:
-        """Gradation group."""
+    def groupId(self) -> int:
+        """Gradation group Id."""
         return self._read_channel_config(_REG_GRAD_GRP_SEL0, self._index)
 
-    @group.setter
-    def group(self, value: int) -> int:
+    @groupId.setter
+    def groupId(self, value: int) -> int:
         if not 0 <= value <= 3:
-            raise ValueError("Group must be between 0 and 3")
+            raise ValueError("Group Id must be between 0 and 3")
         self._write_channel_config(_REG_GRAD_GRP_SEL0, self._index, value)
 
     @property
-    def graduation_mode_select(self) -> bool:
+    def graduation_mode(self) -> bool:
         """1 = grad mode, 0 = normal"""
         offset = self._index % 8
         index = 0 if self._index < 7 else 1
@@ -249,8 +253,8 @@ class LedChannel:
             )
         )
 
-    @graduation_mode_select.setter
-    def graduation_mode_select(self, value: bool) -> None:
+    @graduation_mode.setter
+    def graduation_mode(self, value: bool) -> None:
         offset = self._index % 8
         index = 0 if self._index < 7 else 1
         self._device.write_register(
@@ -496,7 +500,7 @@ class PCA9955:  # noqa PLR0904
 
     @property
     def brightness(self) -> NoReturn:
-        """Global brightness 0 - 255."""
+        """Global brightness 0 - 255. Write only"""
         raise AttributeError("brightness is write-only")
 
     @brightness.setter
@@ -505,7 +509,7 @@ class PCA9955:  # noqa PLR0904
 
     @property
     def gain(self) -> NoReturn:
-        """Global output currrent 0 - 255."""
+        """Global output currrent 0 - 255. Write only"""
         raise AttributeError("Output current is write-only")
 
     @gain.setter
@@ -514,7 +518,7 @@ class PCA9955:  # noqa PLR0904
 
     @property
     def over_temp(self) -> bool:
-        """True indicates over temperature condition."""
+        """True indicates over temperature condition. Read only"""
         return bool(self.read_register(_REG_MODE2, mask=_1_BIT, bit_offset=_BIT_OVERTEMP))
 
     @over_temp.setter
@@ -523,7 +527,9 @@ class PCA9955:  # noqa PLR0904
 
     @property
     def errors_exist(self) -> bool:
-        """True indicates errors exist."""
+        """True indicates errors exist.
+        Use LedChannel.error to determine which channel(s) has an error.
+        """
         return bool(self.read_register(_REG_MODE2, mask=_1_BIT, bit_offset=_BIT_ERROR))
 
     @errors_exist.setter
@@ -541,7 +547,7 @@ class PCA9955:  # noqa PLR0904
 
     @property
     def auto_increment_flag(self) -> bool:
-        """1 = auto increment, 0 = normal mode"""
+        """1 = auto increment, 0 = normal mode. Read only"""
         return bool(self.read_register(_REG_MODE1, mask=_1_BIT, bit_offset=_BIT_AIF))
 
     @auto_increment_flag.setter
@@ -570,32 +576,31 @@ class PCA9955:  # noqa PLR0904
         self.write_register(_REG_MODE2, int(value), mask=_1_BIT, bit_offset=_BIT_EXP_EN)
 
     @property
-    def group_blinking(self) -> bool:
-        """1 = group control - blinking,
-        0 =  group control - dimming (default)"""
+    def blinking(self) -> bool:
+        """1 = global - blinking, 0 =  global - dimming (default)"""
         return bool(self.read_register(_REG_MODE2, mask=_1_BIT, bit_offset=_BIT_DMBLNK))
 
-    @group_blinking.setter
-    def group_blinking(self, value: bool) -> None:
+    @blinking.setter
+    def blinking(self, value: bool) -> None:
         self.write_register(_REG_MODE2, int(value), mask=_1_BIT, bit_offset=_BIT_DMBLNK)
 
     @property
-    def group_pwm(self) -> int:
-        """Global brightness control when group_blinking = 0)"""
+    def pwm(self) -> int:
+        """Global brightness control when blinking = 0"""
         return self.read_8(_REG_GRPPWM)
 
-    @group_pwm.setter
-    def group_pwm(self, value: int) -> None:
+    @pwm.setter
+    def pwm(self, value: int) -> None:
         self.write_8(_REG_GRPPWM, value)
 
     @property
-    def group_frequency(self) -> int:
-        """Global blinking frequency control when group_blinking = 1)"""
+    def frequency(self) -> int:
+        """Global blinking frequency control when blinking = 1"""
         return self.read_8(_REG_GRPFREQ)
 
-    @group_frequency.setter
-    def group_frequency(self, value: int) -> None:
-        """Global blinking frequency control when group_blinking = 1)"""
+    @frequency.setter
+    def frequency(self, value: int) -> None:
+        """Global blinking frequency control when blinking = 1"""
         self.write_8(_REG_GRPFREQ, value)
 
     def clear_errors(self) -> None:
@@ -603,12 +608,15 @@ class PCA9955:  # noqa PLR0904
         self.write_register(_REG_MODE2, 0x01, mask=_1_BIT, bit_offset=_BIT_CLRERR)
 
     @property
-    def output_delay_offset(self) -> int:
-        """Output delay offset"""
+    def output_delay(self) -> int:
+        """Output delay offset.
+        Turn-on delay between LED outputs. This helps to reduce peak
+        current for the VDD supply and reduces EMI.
+        """
         return self.read_register(_REG_OFFSET, mask=_4_BITS, bit_offset=_BIT_OUTPUT_DELAY)
 
-    @output_delay_offset.setter
-    def output_delay_offset(self, value: int) -> None:
+    @output_delay.setter
+    def output_delay(self, value: int) -> None:
         if value not in {0x00, 0x01, 0x02, 0x03, 0x0F}:
             raise ValueError(
                 f"Value must be one of {0x00:00x}, {0x01:02x}, {0x02:02x}, {0x03:02x} or{0x0F:02x}"

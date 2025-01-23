@@ -21,13 +21,15 @@ ledDriver.output_enable = True
 ledDriver.gain = 0xFF
 ledDriver.brightness = 0x7F  # 50% brightness
 
+# Manually turn on, then off the first channel
 ledDriver.channels[0].state = LedChannel.ON
 time.sleep(5)
-ledDriver.channels[0].state = LedChannel.OFF
 
+ledDriver.channels[0].state = LedChannel.OFF
 time.sleep(5)
 
-ledDriver.channels[0].state = LedChannel.PWM
+# Gradualy increase brightness from off to fully bright for channel 12
+ledDriver.channels[12].state = LedChannel.PWM
 for i in range(255):
-    ledDriver.channels[0].brightness = i
+    ledDriver.channels[12].brightness = i
     time.sleep(0.02)
